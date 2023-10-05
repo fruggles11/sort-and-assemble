@@ -11,3 +11,10 @@ In short, the pipeline does the following:
 7. Runs `canu` on the FASTQ for each primer of interest to provide a FASTA of IgM heavy and light haplotype consensus sequences.
 8. Searches IgBLAST for each of those consensus sequences to find the closest matches.
 
+An example command after cloning this repo would be:
+```
+nextflow run . \
+--fastq_dir "~/Documents/fastq_pass"
+--barcode_table "resources/barcodes.csv"
+--primer_table "resources/primers.csv"
+```
