@@ -1,5 +1,10 @@
 .nextflow/
 work/
+# resources/
+input/
+fastqs/
+fastq/
+reads/
 
 .nextflow.log*
 .DS_Store
@@ -9,3 +14,5 @@ timeline.html*
 report.html*
 *.dot
 *.png.*
+*.fastq
+*.fastq.gz
