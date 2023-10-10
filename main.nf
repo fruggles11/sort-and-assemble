@@ -10,9 +10,8 @@ workflow {
 	
 	
 	// input channels
-    ch_fastqs = Channel
-        .fromPath( "${params.fastq_dir}/**/*.fastq.gz" )
-        .collect()
+    ch_fastq_dirs = Channel
+        .fromPath( "${params.fastq_dir}/barcode*" )
 
     ch_barcodes = Channel
         .fromPath ( params.barcode_table )
@@ -28,8 +27,7 @@ workflow {
 	
 	// Workflow steps 
     MERGE_BY_BARCODE (
-        ch_fastqs,
-        ch_barcodes
+        ch_fastq_dirs
     )
 
     FIND_ADAPTER_SEQS (
@@ -93,20 +91,18 @@ process MERGE_BY_BARCODE {
 	
 	tag "${sample_id}"
 	publishDir params.merged_reads, mode: 'copy'
+
+	cpus 4
 	
 	input:
-	each path(fastqs)
-    tuple val(sample_id), val(barcode), val(rev_barcode)
+	path read_dir
 	
 	output:
 	path "*.fastq.gz"
 	
 	script:
 	"""
-    touch barcodes.txt
-    cat ${barcode} >> barcodes.txt
-    cat ${rev_barcode} >> barcodes.txt
-    seqkit grep -j ${task.cpus} -f barcodes.txt -m 1 ${fastqs} -o ${sample_id}.fastq.gz
+    seqkit scat -j 4 -f ${read_dir} > all_records.fastq.gz
 	"""
 
 }
