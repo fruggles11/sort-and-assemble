@@ -13,10 +13,10 @@ workflow {
     ch_fastq_dirs = Channel
         .fromPath( "${params.fastq_dir}/barcode*" )
 
-    ch_barcodes = Channel
-        .fromPath ( params.barcode_table )
-        .splitCsv ( header: true )
-        .map { row -> tuple( row.sample_id, row.barcode, row.rev_barcode ) }
+    // ch_barcodes = Channel
+    //     .fromPath ( params.barcode_table )
+    //     .splitCsv ( header: true )
+    //     .map { row -> tuple( row.sample_id, row.barcode, row.rev_barcode ) }
 
     ch_primers = Channel
         .fromPath ( params.primer_table )
@@ -101,8 +101,9 @@ process MERGE_BY_BARCODE {
 	path "*.fastq.gz"
 	
 	script:
+	barcode = read_dir.getName()
 	"""
-    seqkit scat -j 4 -f ${read_dir} > all_records.fastq.gz
+    seqkit scat -j 4 -f ${read_dir} > ${barcode}.fastq.gz
 	"""
 
 }
@@ -115,18 +116,18 @@ process FIND_ADAPTER_SEQS {
 	publishDir params.merged_reads, mode: 'copy'
 	
 	input:
-	path demux_reads
+	path merged_reads
 	
 	output:
 	tuple path("*_adapters.fasta"), val(sample_id)
 
     when:
-    file(demux_reads.toString()).countFastq() > 20
+    file(merged_reads.toString()).countFastq() > 20
 	
 	script:
-	sample_id = demux_reads.getSimpleName()
+	sample_id = merged_reads.getSimpleName()
 	"""
-    bbmerge.sh in="${demux_reads}" outa="${sample_id}_adapters.fasta" ow
+    bbmerge.sh in="${merged_reads}" outa="${sample_id}_adapters.fasta" ow
 	"""
 
 }
@@ -139,22 +140,22 @@ process SPLIT_BY_PRIMER {
 	publishDir params.params.split_reads, mode: 'copy'
 	
 	input:
-	each path(demux_reads)
+	each path(merged_reads)
     tuple val(primer_id), val(primer_seqs), val(whether_diff)
 
 	output:
 	tuple path("*.fastq.gz"), val(sample_id), val(primer_id)
 
     when:
-    file(demux_reads.toString()).countFastq() > 50
+    file(merged_reads.toString()).countFastq() > 50
 	
 	script:
-	sample_id = demux_reads.getSimpleName()
+	sample_id = merged_reads.getSimpleName()
 	"""
     touch primers.txt
     cat ${primer_seqs} > tmp.txt
     sed 's/\[\|\]//g' tmp.txt | tr ',' '\n' | sed 's/^[ \t]*//;s/[ \t]*$//' >> primers.txt
-    seqkit grep -j ${task.cpus} -f primers.txt -m 1 ${demux_reads} -o ${sample_id}_${primer_id}.fastq.gz
+    seqkit grep -j ${task.cpus} -f primers.txt -m 1 ${merged_reads} -o ${sample_id}_${primer_id}.fastq.gz
 	"""
 
 }
