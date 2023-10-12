@@ -17,6 +17,5 @@ An example command after cloning this repo would be:
 ```
 nextflow run . \
 --fastq_dir "~/Documents/fastq_pass"
---barcode_table "resources/barcodes.csv"
 --primer_table "resources/primers.csv"
 ```

@@ -42,6 +42,9 @@ workflow {
     QC_TRIMMING (
         SPLIT_BY_PRIMER.out
 			.combine( FIND_ADAPTER_SEQS.out, by: 1 )
+			.map { id, reads, adapters -> tuple( id, file(reads), file(reads).countFastq(), file(adapters) ) }
+			.filter { it[2] > params.min_reads }
+			.map { id, reads, count, adapters -> tuple( id, file(reads), file(adapters) ) }
     )
 
     READ_STATS (
@@ -56,6 +59,9 @@ workflow {
 
     // ASSEMBLE_WITH_CANU (
     //     QC_TRIMMING.out
+	// 		.map { fastq, sample, primer -> tuple( file(fastq), file(fastq).countFastq(), sample, primer ) }
+	// 		.filter { it[1] > params.min_reads }
+	// 		.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     // )
 
     // SEARCH_IGBLAST (
@@ -156,8 +162,8 @@ process SPLIT_BY_PRIMER {
 		.replace(",", "\n")
 	"""
 	echo "${seq_patterns}" > primers.txt
-    seqkit grep -j ${task.cpus} -f primers.txt -m 1 ${merged_reads} \
-	-o ${sample_id}_${primer_id}.fastq.gz
+    seqkit grep -j ${task.cpus} -f primers.txt -m 2 \
+	${merged_reads} -o ${sample_id}_${primer_id}.fastq.gz
 	"""
 
 }
@@ -166,7 +172,7 @@ process QC_TRIMMING {
 	
 	/* */
 	
-	tag "${sample_id}"
+	tag "${sample_id}, ${primer_id}"
 	publishDir params.trimmed_reads, mode: 'copy'
 
 	cpus 4
@@ -180,7 +186,7 @@ process QC_TRIMMING {
 	script:
 	primer_id = split_reads.getSimpleName().split("_")[1]
 	"""
-	reformat.sh in=${split_reads} \
+	reformat.sh in=`realpath ${split_reads}` \
 	out=${sample_id}_${primer_id}_filtered.fastq.gz \
 	ref=${adapters} \
 	forcetrimleft=30 forcetrimright2=30 \
@@ -250,13 +256,13 @@ process ASSEMBLE_WITH_CANU {
 	tuple path(qc_reads), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("${sample_id}-${primer_id}/*.fasta"), val(sample_id), val(primer_id)
+	tuple path("*.fasta"), val(sample_id), val(primer_id)
 	
 	script:
 	"""
 	canu \
-	-p "${sample_id}-${primer_id}" -d "${sample_id}-${primer_id}" \
-	genomeSize=1000 minreadlength=600 \
+	-p "${sample_id}-${primer_id}" -d . \
+	genomeSize=1000 \
 	-nanopore `realpath ${qc_reads}`
 	"""
 
