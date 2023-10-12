@@ -64,7 +64,10 @@ workflow {
 	// 		.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     // )
 
+	// PULL_IGMT_REFS ()
+
     // SEARCH_IGBLAST (
+	// 	PULL_IGMT_REFS.out,
     //     ASSEMBLE_WITH_CANU.out
     // )
 	
@@ -262,7 +265,8 @@ process ASSEMBLE_WITH_CANU {
 	"""
 	canu \
 	-p "${sample_id}-${primer_id}" -d . \
-	genomeSize=1000 \
+	genomeSize=1.7k \
+	corOutCoverage=10 \
 	-nanopore `realpath ${qc_reads}`
 	"""
 
