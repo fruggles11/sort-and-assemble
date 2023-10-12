@@ -48,17 +48,17 @@ workflow {
         QC_TRIMMING.out
     )
 
-    VISUALIZE_STATS (
-        READ_STATS.out
-    )
+    // VISUALIZE_STATS (
+    //     READ_STATS.out
+    // )
 
-    ASSEMBLE_WITH_CANU (
-        QC_TRIMMING.out
-    )
+    // ASSEMBLE_WITH_CANU (
+    //     QC_TRIMMING.out
+    // )
 
-    SEARCH_IGBLAST (
-        ASSEMBLE_WITH_CANU.out
-    )
+    // SEARCH_IGBLAST (
+    //     ASSEMBLE_WITH_CANU.out
+    // )
 	
 	
 }
@@ -122,12 +122,12 @@ process FIND_ADAPTER_SEQS {
 	tuple path("*_adapters.fasta"), val(sample_id)
 
     when:
-    file(merged_reads.toString()).countFastq() > 20
+    file(merged_reads.toString()).countFastq() > params.min_reads
 	
 	script:
 	sample_id = merged_reads.getSimpleName()
 	"""
-    bbmerge.sh in="${merged_reads}" outa="${sample_id}_adapters.fasta" ow
+    bbmerge.sh in="${merged_reads}" outa="${sample_id}_adapters.fasta" ow qin=33
 	"""
 
 }
@@ -147,7 +147,7 @@ process SPLIT_BY_PRIMER {
 	tuple path("*.fastq.gz"), val(sample_id), val(primer_id)
 
     when:
-    file(merged_reads.toString()).countFastq() > 50
+    file(merged_reads.toString()).countFastq() > params.min_reads
 	
 	script:
 	sample_id = merged_reads.getSimpleName()
@@ -166,6 +166,8 @@ process QC_TRIMMING {
 	
 	tag "${sample_id}"
 	publishDir params.trimmed_reads, mode: 'copy'
+
+	cpus 4
 	
 	input:
 	tuple path(split_reads), val(sample_id), val(primer_id)
@@ -179,6 +181,12 @@ process QC_TRIMMING {
 	
 	script:
 	"""
+	reformat.sh in=${split_reads} \
+	out=${sample_id}_${primer_id}_filtered.fastq.gz \
+	ref=${adapters} altref=adapters \
+	forcetrimleft=30 forcetrimright2=30 \
+	mincalledquality=9 qin=33 minlength=200 \
+	uniquenames=t t=${task.cpus}
 	"""
 
 }
@@ -189,6 +197,8 @@ process READ_STATS {
 	
 	tag "${sample_id}"
 	publishDir params.read_stats, mode: 'copy'
+
+	cpus 4
 	
 	input:
 	tuple path(qc_reads), val(sample_id), val(primer_id)
@@ -199,6 +209,8 @@ process READ_STATS {
 	
 	script:
 	"""
+	seqkit stats -j ${task.cpus} --tabular -a \
+	${qc_reads} > ${sample_id}_${primer_id}.tsv
 	"""
 
 }
@@ -218,6 +230,12 @@ process VISUALIZE_STATS {
 	
 	script:
 	"""
+	csvtk -t plot hist -f 4 --format pdf ${stats_tsv} \
+	-o ${sample_id}_${primer_id}_num_seqs.pdf
+	csvtk -t plot hist -f 13 --format pdf ${stats_tsv} \
+	-o ${sample_id}_${primer_id}_n50.pdf
+	csvtk -t plot hist -f 15 --format pdf ${stats_tsv} \
+	-o ${sample_id}_${primer_id}_q30.pdf
 	"""
 
 }

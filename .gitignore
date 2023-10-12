@@ -5,6 +5,7 @@ input/
 fastqs/
 fastq/
 reads/
+results/
 
 .nextflow.log*
 .DS_Store

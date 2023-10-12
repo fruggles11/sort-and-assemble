@@ -1,4 +1,6 @@
 # Sort and Assemble
+[![Docker CI](https://github.com/nrminor/sort-and-assemble/actions/workflows/docker-image.yaml/badge.svg)](https://github.com/sort-and-assemble/ALPINE/actions/workflows/docker-image.yaml)
+
 This pipeline takes Oxford Nanopore reads from B-Cell IgM amplicons, sorts out the reads from each amplicon, and assembles them into the most likely haplotypes using somatic variants.
 
 In short, the pipeline does the following:

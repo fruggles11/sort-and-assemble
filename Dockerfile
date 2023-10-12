@@ -1,5 +1,5 @@
 # Use an official Ubuntu as a parent image
-FROM ubuntu:latest
+FROM ubuntu:20.04
 
 # Set working directory
 WORKDIR /scratch
@@ -22,7 +22,9 @@ RUN apt-get update \
     zstd \
     build-essential \
     zlib1g-dev \
-    git
+    libidn11 \
+    git \
+    curl
 
 # Install BBTools
 RUN wget https://sourceforge.net/projects/bbmap/files/BBMap_38.90.tar.gz \
@@ -46,20 +48,22 @@ RUN wget https://github.com/shenwei356/csvtk/releases/download/v0.23.0/csvtk_lin
     && rm csvtk_linux_amd64.tar.gz
 
 # Install Canu
-RUN git clone https://github.com/marbl/canu.git \
-    && cd canu/src \
-    && make -j \
-    && cd ../Linux-amd64/bin \
-    && cp canu /usr/local/bin/
+RUN curl -L https://github.com/marbl/canu/releases/download/v2.2/canu-2.2.tar.xz --output /opt/canu-2.2.tar.xz && \
+    cd /opt && \
+    tar -xJf canu-2.2.tar.xz && \
+    rm canu-2.2.tar.xz && \
+    cd canu-2.2/src && \
+    make -j 8
+ENV PATH=$PATH:/opt/canu-2.2/build/bin
 
 # Install igBLAST
-RUN wget ftp://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-igblast-1.17.0-x64-linux.tar.gz \
-    && tar -xvzf ncbi-igblast-1.17.0-x64-linux.tar.gz \
-    && mv ncbi-igblast-1.17.0 /opt/ \
-    && rm ncbi-igblast-1.17.0-x64-linux.tar.gz
+RUN wget ftp://ftp.ncbi.nih.gov/blast/executables/igblast/release/1.9.0/ncbi-igblast-1.9.0-x64-linux.tar.gz \
+    && tar -xvzf ncbi-igblast-1.9.0-x64-linux.tar.gz \
+    && mv ncbi-igblast-1.9.0 /opt/ \
+    && rm ncbi-igblast-1.9.0-x64-linux.tar.gz
 
 # Update PATH for igBLAST
-ENV PATH="/opt/ncbi-igblast-1.17.0/bin:${PATH}"
+ENV PATH="/opt/ncbi-igblast-1.9.0/bin:${PATH}"
 
 # Default command to execute when starting a container from this image
 CMD [ "bash" ]
