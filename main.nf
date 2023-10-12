@@ -7,23 +7,18 @@ nextflow.enable.dsl = 2
 // WORKFLOW SPECIFICATION
 // --------------------------------------------------------------- //
 workflow {
-	
-	
+
 	// input channels
     ch_fastq_dirs = Channel
-        .fromPath( "${params.fastq_dir}/barcode*" )
-
-    // ch_barcodes = Channel
-    //     .fromPath ( params.barcode_table )
-    //     .splitCsv ( header: true )
-    //     .map { row -> tuple( row.sample_id, row.barcode, row.rev_barcode ) }
+        .fromPath( "${params.fastq_dir}/barcode*/", type: 'dir' )
 
     ch_primers = Channel
         .fromPath ( params.primer_table )
         .splitCsv ( header: true )
         .map { row -> tuple( row.chain, row.primer_seq, row.differentiating ) }
-        .filter { it[2] == true }
+        .filter { it[2] == "true" }
         .groupTuple ( by: 0 )
+		.map { chain, primers, diff -> tuple( chain, primers ) }
 	
 	// Workflow steps 
     MERGE_BY_BARCODE (
@@ -32,16 +27,21 @@ workflow {
 
     FIND_ADAPTER_SEQS (
         MERGE_BY_BARCODE.out
+			.map { fastq -> tuple( file(fastq), file(fastq).countFastq() ) }
+			.filter { it[1] > params.min_reads }
     )
 
     SPLIT_BY_PRIMER (
-        MERGE_BY_BARCODE.out,
+        MERGE_BY_BARCODE.out
+			.map { fastq -> tuple( file(fastq), file(fastq).countFastq() ) }
+			.filter { it[1] > params.min_reads }
+			.map { fastq, count -> fastq },
         ch_primers
     )
 
     QC_TRIMMING (
-        SPLIT_BY_PRIMER.out,
-        FIND_ADAPTER_SEQS.out
+        SPLIT_BY_PRIMER.out
+			.combine( FIND_ADAPTER_SEQS.out, by: 1 )
     )
 
     READ_STATS (
@@ -89,7 +89,7 @@ process MERGE_BY_BARCODE {
 	
 	/* */
 	
-	tag "${sample_id}"
+	tag "${barcode}"
 	publishDir params.merged_reads, mode: 'copy'
 
 	cpus 4
@@ -103,7 +103,7 @@ process MERGE_BY_BARCODE {
 	script:
 	barcode = read_dir.getName()
 	"""
-    seqkit scat -j 4 -f ${read_dir} > ${barcode}.fastq.gz
+    seqkit scat -j 4 --out-format fastq -f `realpath ${read_dir}` -o ${barcode}.fastq.gz
 	"""
 
 }
@@ -113,16 +113,15 @@ process FIND_ADAPTER_SEQS {
 	/* */
 	
 	tag "${sample_id}"
-	publishDir params.merged_reads, mode: 'copy'
+	// publishDir params.merged_reads, mode: 'copy'
+
+	errorStrategy 'ignore'
 	
 	input:
-	path merged_reads
+	tuple path(merged_reads), val(count)
 	
 	output:
 	tuple path("*_adapters.fasta"), val(sample_id)
-
-    when:
-    file(merged_reads.toString()).countFastq() > params.min_reads
 	
 	script:
 	sample_id = merged_reads.getSimpleName()
@@ -137,25 +136,28 @@ process SPLIT_BY_PRIMER {
 	/* */
 	
 	tag "${sample_id}"
-	publishDir params.params.split_reads, mode: 'copy'
+	publishDir params.split_reads, mode: 'copy'
 	
 	input:
 	each path(merged_reads)
-    tuple val(primer_id), val(primer_seqs), val(whether_diff)
+    tuple val(primer_id), val(primer_seqs)
 
 	output:
-	tuple path("*.fastq.gz"), val(sample_id), val(primer_id)
-
-    when:
-    file(merged_reads.toString()).countFastq() > params.min_reads
+	tuple path("*.fastq.gz"), val(sample_id)
 	
 	script:
 	sample_id = merged_reads.getSimpleName()
+	seq_patterns = primer_seqs
+		.toString()
+		.replace("[", "")
+		.replace("]", "")
+		.replace("'", "")
+		.replace(" ", "")
+		.replace(",", "\n")
 	"""
-    touch primers.txt
-    cat ${primer_seqs} > tmp.txt
-    sed 's/\[\|\]//g' tmp.txt | tr ',' '\n' | sed 's/^[ \t]*//;s/[ \t]*$//' >> primers.txt
-    seqkit grep -j ${task.cpus} -f primers.txt -m 1 ${merged_reads} -o ${sample_id}_${primer_id}.fastq.gz
+	echo "${seq_patterns}" > primers.txt
+    seqkit grep -j ${task.cpus} -f primers.txt -m 1 ${merged_reads} \
+	-o ${sample_id}_${primer_id}.fastq.gz
 	"""
 
 }
@@ -170,20 +172,17 @@ process QC_TRIMMING {
 	cpus 4
 	
 	input:
-	tuple path(split_reads), val(sample_id), val(primer_id)
-    tuple path(adapters), val(adapter_id)
+	tuple val(sample_id), path(split_reads), path(adapters)
 	
 	output:
 	tuple path("*.fastq.gz"), val(sample_id), val(primer_id)
-
-    when:
-    sample_id == adapter_id
 	
 	script:
+	primer_id = split_reads.getSimpleName().split("_")[1]
 	"""
 	reformat.sh in=${split_reads} \
 	out=${sample_id}_${primer_id}_filtered.fastq.gz \
-	ref=${adapters} altref=adapters \
+	ref=${adapters} \
 	forcetrimleft=30 forcetrimright2=30 \
 	mincalledquality=9 qin=33 minlength=200 \
 	uniquenames=t t=${task.cpus}
