@@ -46,11 +46,13 @@ workflow {
 
     READ_STATS (
         QC_TRIMMING.out
+			.map { tsv, sample, primer -> tsv }
+			.collect()
     )
 
-    // VISUALIZE_STATS (
-    //     READ_STATS.out
-    // )
+    VISUALIZE_STATS (
+        READ_STATS.out
+    )
 
     // ASSEMBLE_WITH_CANU (
     //     QC_TRIMMING.out
@@ -114,8 +116,6 @@ process FIND_ADAPTER_SEQS {
 	
 	tag "${sample_id}"
 	// publishDir params.merged_reads, mode: 'copy'
-
-	errorStrategy 'ignore'
 	
 	input:
 	tuple path(merged_reads), val(count)
@@ -194,22 +194,21 @@ process READ_STATS {
 	
 	/* */
 	
-	tag "${sample_id}"
 	publishDir params.read_stats, mode: 'copy'
 
 	cpus 4
 	
 	input:
-	tuple path(qc_reads), val(sample_id), val(primer_id)
+	path fastqs 
 	
 	
 	output:
-    tuple path("*.tsv"), val(sample_id), val(primer_id)
+    path "*.tsv"
 	
 	script:
 	"""
 	seqkit stats -j ${task.cpus} --tabular -a \
-	${qc_reads} > ${sample_id}_${primer_id}.tsv
+	*.fastq.* > sequencing_run_stats.tsv
 	"""
 
 }
@@ -217,12 +216,11 @@ process READ_STATS {
 process VISUALIZE_STATS {
 	
 	/* */
-	
-	tag "${sample_id}"
+
 	publishDir params.read_stats, mode: 'copy'
 	
 	input:
-    tuple path(stats_tsv), val(sample_id), val(primer_id)
+    path stats_tsv
 	
 	output:
 	path "*"
@@ -230,11 +228,11 @@ process VISUALIZE_STATS {
 	script:
 	"""
 	csvtk -t plot hist -f 4 --format pdf ${stats_tsv} \
-	-o ${sample_id}_${primer_id}_num_seqs.pdf
+	-o num_seqs_histogram.pdf
 	csvtk -t plot hist -f 13 --format pdf ${stats_tsv} \
-	-o ${sample_id}_${primer_id}_n50.pdf
+	-o n50_histogram.pdf
 	csvtk -t plot hist -f 15 --format pdf ${stats_tsv} \
-	-o ${sample_id}_${primer_id}_q30.pdf
+	-o q30_histogram.pdf
 	"""
 
 }
@@ -243,17 +241,23 @@ process ASSEMBLE_WITH_CANU {
 	
 	/* */
 	
-	tag "${tag}"
+	tag "${sample_id}, ${primer_id}"
 	publishDir params.assembly_results, mode: 'copy'
+
+	cpus 4
 	
 	input:
 	tuple path(qc_reads), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("*.fasta"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}-${primer_id}/*.fasta"), val(sample_id), val(primer_id)
 	
 	script:
 	"""
+	canu \
+	-p "${sample_id}-${primer_id}" -d "${sample_id}-${primer_id}" \
+	genomeSize=1000 minreadlength=600 \
+	-nanopore `realpath ${qc_reads}`
 	"""
 
 }
