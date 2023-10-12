@@ -135,7 +135,7 @@ process FIND_ADAPTER_SEQS {
 	script:
 	sample_id = merged_reads.getSimpleName()
 	"""
-    bbmerge.sh in="${merged_reads}" outa="${sample_id}_adapters.fasta" ow qin=33
+    bbmerge.sh in=`realpath ${merged_reads}` outa="${sample_id}_adapters.fasta" ow qin=33
 	"""
 
 }
@@ -165,7 +165,7 @@ process SPLIT_BY_PRIMER {
 		.replace(",", "\n")
 	"""
 	echo "${seq_patterns}" > primers.txt
-    seqkit grep -j ${task.cpus} -f primers.txt -m 2 \
+    seqkit grep -j ${task.cpus} -f primers.txt -m ${params.primer_mismatch} \
 	${merged_reads} -o ${sample_id}_${primer_id}.fastq.gz
 	"""
 
