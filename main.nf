@@ -80,6 +80,12 @@ workflow {
 // DERIVATIVE PARAMETER SPECIFICATION
 // --------------------------------------------------------------- //
 // Additional parameters that are derived from parameters set in nextflow.config
+if ( params.debugmode == true ){
+	errorMode = 'terminate'
+} else {
+	errorMode = 'ignore'
+}
+
 params.merged_reads = params.results + "/1_merged_reads"
 params.split_reads = params.results + "/2_split_reads"
 params.read_qc = params.results + "/3_read_QC"
@@ -103,6 +109,9 @@ process MERGE_BY_BARCODE {
 	tag "${barcode}"
 	publishDir params.merged_reads, mode: 'copy'
 
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+
 	cpus 4
 	
 	input:
@@ -114,7 +123,7 @@ process MERGE_BY_BARCODE {
 	script:
 	barcode = read_dir.getName()
 	"""
-    seqkit scat -j 4 --out-format fastq -f `realpath ${read_dir}` -o ${barcode}.fastq.gz
+    seqkit scat -j 4 -f `realpath ${read_dir}` -o ${barcode}.fastq.gz
 	"""
 
 }
@@ -125,6 +134,9 @@ process FIND_ADAPTER_SEQS {
 	
 	tag "${sample_id}"
 	// publishDir params.merged_reads, mode: 'copy'
+
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
 	
 	input:
 	tuple path(merged_reads), val(count)
@@ -146,6 +158,9 @@ process SPLIT_BY_PRIMER {
 	
 	tag "${sample_id}"
 	publishDir params.split_reads, mode: 'copy'
+
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
 	
 	input:
 	each path(merged_reads)
@@ -178,6 +193,9 @@ process QC_TRIMMING {
 	tag "${sample_id}, ${primer_id}"
 	publishDir params.trimmed_reads, mode: 'copy'
 
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+
 	cpus 4
 	
 	input:
@@ -205,6 +223,9 @@ process READ_STATS {
 	
 	publishDir params.read_stats, mode: 'copy'
 
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+
 	cpus 4
 	
 	input:
@@ -227,6 +248,9 @@ process VISUALIZE_STATS {
 	/* */
 
 	publishDir params.read_stats, mode: 'copy'
+
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
 	
 	input:
     path stats_tsv
@@ -253,6 +277,9 @@ process ASSEMBLE_WITH_CANU {
 	tag "${sample_id}, ${primer_id}"
 	publishDir params.assembly_results, mode: 'copy'
 
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+
 	cpus 4
 	
 	input:
@@ -278,6 +305,9 @@ process SEARCH_IGBLAST {
 	
 	tag "${sample_id}"
 	publishDir params.ig_blast, mode: 'copy'
+
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
 	
 	input:
 	tuple path(fasta), val(sample_id), val(primer_id)
