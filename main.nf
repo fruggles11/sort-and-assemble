@@ -209,7 +209,7 @@ process QC_TRIMMING {
 	"""
 	reformat.sh in=`realpath ${split_reads}` \
 	out=${sample_id}_${primer_id}_filtered.fastq.gz \
-	ref=${adapters} \
+	ref=`realpath ${adapters}` \
 	forcetrimleft=30 forcetrimright2=30 \
 	mincalledquality=9 qin=33 minlength=200 \
 	uniquenames=t t=${task.cpus}
