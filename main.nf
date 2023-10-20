@@ -118,7 +118,7 @@ process MERGE_BY_BARCODE {
 	path read_dir
 	
 	output:
-	path "*.fastq.gz"
+	path "${barcode}.fastq.gz"
 	
 	script:
 	barcode = read_dir.getName()
@@ -141,7 +141,7 @@ process FIND_ADAPTER_SEQS {
 	tuple path(merged_reads), val(count)
 	
 	output:
-	tuple path("*_adapters.fasta"), val(sample_id)
+	tuple path("${sample_id}_adapters.fasta"), val(sample_id)
 	
 	script:
 	sample_id = merged_reads.getSimpleName()
@@ -166,7 +166,7 @@ process SPLIT_BY_PRIMER {
     tuple val(primer_id), val(primer_seqs)
 
 	output:
-	tuple path("*.fastq.gz"), val(sample_id)
+	tuple path("${sample_id}_${primer_id}.fastq.gz"), val(sample_id)
 	
 	script:
 	sample_id = merged_reads.getSimpleName()
@@ -201,7 +201,7 @@ process QC_TRIMMING {
 	tuple val(sample_id), path(split_reads), path(adapters)
 	
 	output:
-	tuple path("*.fastq.gz"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_${primer_id}_filtered.fastq.gz"), val(sample_id), val(primer_id)
 	
 	script:
 	primer_id = split_reads.getSimpleName().split("_")[1]
@@ -232,7 +232,7 @@ process READ_STATS {
 	
 	
 	output:
-    path "*.tsv"
+    path "sequencing_run_stats.tsv"
 	
 	script:
 	"""

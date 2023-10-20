@@ -18,3 +18,4 @@ report.html*
 *.fastq
 *.fastq.gz
 *.tar.gz
+*.zip
