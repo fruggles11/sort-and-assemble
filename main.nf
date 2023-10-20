@@ -133,7 +133,6 @@ process FIND_ADAPTER_SEQS {
 	/* */
 	
 	tag "${sample_id}"
-	// publishDir params.merged_reads, mode: 'copy'
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
