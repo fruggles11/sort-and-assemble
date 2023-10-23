@@ -64,7 +64,7 @@ workflow {
 			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     )
 
-	// PULL_IGMT_REFS ()
+	PULL_IGMT_REFS ()
 
     // SEARCH_IGBLAST (
 	// 	PULL_IGMT_REFS.out,
@@ -297,6 +297,19 @@ process ASSEMBLE_WITH_CANU {
 	-nanopore `realpath ${qc_reads}`
 	"""
 
+}
+
+process PULL_IGMT_REFS {
+
+	/* */
+
+	output:
+	path "*.fasta"
+
+	script:
+	"""
+	goDownloadFiles ${params.url_list}
+	"""
 }
 
 process SEARCH_IGBLAST {

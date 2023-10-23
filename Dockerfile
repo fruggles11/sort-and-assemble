@@ -24,7 +24,15 @@ RUN apt-get update \
     zlib1g-dev \
     libidn11 \
     git \
-    curl
+    curl \
+    golang-go
+
+# build go package for downloading files
+COPY src/ /src/
+RUN cd /src && \
+    go build goDownloadFiles.go && \
+    chmod +x goDownloadFiles
+ENV PATH="${PATH}:${pwd}/goDownloadFiles"
 
 # Install BBTools
 RUN wget https://sourceforge.net/projects/bbmap/files/BBMap_38.90.tar.gz \
