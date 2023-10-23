@@ -57,12 +57,12 @@ workflow {
         READ_STATS.out
     )
 
-    // ASSEMBLE_WITH_CANU (
-    //     QC_TRIMMING.out
-	// 		.map { fastq, sample, primer -> tuple( file(fastq), file(fastq).countFastq(), sample, primer ) }
-	// 		.filter { it[1] > params.min_reads }
-	// 		.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
-    // )
+    ASSEMBLE_WITH_CANU (
+        QC_TRIMMING.out
+			.map { fastq, sample, primer -> tuple( file(fastq), file(fastq).countFastq(), sample, primer ) }
+			.filter { it[1] > params.min_reads }
+			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
+    )
 
 	// PULL_IGMT_REFS ()
 
@@ -291,8 +291,9 @@ process ASSEMBLE_WITH_CANU {
 	"""
 	canu \
 	-p "${sample_id}-${primer_id}" -d . \
-	genomeSize=1.7k \
-	corOutCoverage=10 \
+	‘genomesize=1000’ \
+	‘maxinputcoverage=1000’ \
+	‘minreadlength=600’ \
 	-nanopore `realpath ${qc_reads}`
 	"""
 
