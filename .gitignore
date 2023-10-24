@@ -19,3 +19,4 @@ report.html*
 *.fastq.gz
 *.tar.gz
 *.zip
+goDownloadFiles
