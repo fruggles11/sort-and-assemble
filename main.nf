@@ -63,13 +63,15 @@ workflow {
     ASSEMBLE_WITH_CANU (
         QC_TRIMMING.out
 			.map { fastq, sample, primer -> tuple( file(fastq), file(fastq).countFastq(), sample, primer ) }
-			.filter { it[1] > params.min_reads }
+			.filter { it[1] > 1000 }
 			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     )
 
 	PULL_IGMT_REFS (
 		ch_file_list
 	)
+
+	PULL_MAMU_DATABASE ( )
 
 	BUILD_IGBLAST_DATABASE (
 		PULL_IGMT_REFS.out
@@ -78,6 +80,7 @@ workflow {
 
     SEARCH_IGBLAST (
 		BUILD_IGBLAST_DATABASE.out,
+		PULL_MAMU_DATABASE.out,
         ASSEMBLE_WITH_CANU.out
     )
 	
@@ -221,7 +224,7 @@ process QC_TRIMMING {
 	ref=`realpath ${adapters}` \
 	forcetrimleft=30 forcetrimright2=30 \
 	mincalledquality=9 qin=33 minlength=600 \
-	uniquenames=t t=${task.cpus}
+	uniquenames=t overwrite=true t=${task.cpus}
 	"""
 
 }
@@ -296,11 +299,14 @@ process ASSEMBLE_WITH_CANU {
 	tuple path(qc_reads), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("${sample_id}-${primer_id}/${sample_id}-${primer_id}.contigs.fasta"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}-${primer_id}.contigs.fasta"), val(sample_id), val(primer_id)
 	
 	script:
 	"""
-	canu -p ${sample_id}-${primer_id} -d ${sample_id}-${primer_id} 'genomesize=1000' 'maxinputcoverage=1000' 'minreadlength=600' 'correctedErrorRate=0.2' -nanopore `realpath ${qc_reads}`
+	canu \
+	-p ${sample_id}-${primer_id} -d . \
+	genomeSize=1000 maxInputCoverage=1000 \
+	-trimmed -corrected -nanopore `realpath ${qc_reads}`
 	"""
 
 }
@@ -319,6 +325,23 @@ process PULL_IGMT_REFS {
 	"""
 	goDownloadFiles \
 	-http ${url_list}
+	"""
+
+}
+
+process PULL_MAMU_DATABASE {
+
+	/* */
+
+	output:
+	path "*"
+
+	script:
+	"""
+	wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/database/rhesus_monkey_VJ.tar && \
+	mkdir database && \
+	tar -xvf rhesus_monkey_VJ.tar -C database
+	wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/old_optional_file/rhesus_monkey_gl.aux
 	"""
 
 }
@@ -346,14 +369,15 @@ process SEARCH_IGBLAST {
 	
 	/* */
 	
-	tag "${sample_id}"
+	tag "${sample_id}, ${primer_id}"
 	publishDir params.ig_blast, mode: 'copy'
 
-	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
-	maxRetries 2
+	errorStrategy 'ignore' // { task.attempt < 3 ? 'retry' : errorMode }
+	// maxRetries 2
 	
 	input:
-	each path(imgt_db)
+	path imgt_db
+	path mamu_database
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
@@ -361,6 +385,10 @@ process SEARCH_IGBLAST {
 	
 	script:
 	"""
+	igblastn \
+	-organism rhesus_monkey \
+	-query ${fasta} \
+	-db imgt_db
 	"""
 
 }
