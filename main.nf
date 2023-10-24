@@ -22,6 +22,9 @@ workflow {
 	
 	ch_file_list = Channel
 		.fromPath( params.url_list )
+
+	ch_blast_files = Channel
+		.fromPath ( params.mamu_database_files )
 	
 	// Workflow steps 
     MERGE_BY_BARCODE (
@@ -67,20 +70,26 @@ workflow {
 			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     )
 
-	PULL_IGMT_REFS (
+	PULL_IMGT_REFS (
 		ch_file_list
 	)
 
-	PULL_MAMU_DATABASE ( )
+	PULL_MAMU_DATABASE (
+		ch_blast_files
+	)
 
 	BUILD_IGBLAST_DATABASE (
-		PULL_IGMT_REFS.out
+		PULL_IMGT_REFS.out
 			.collect()
 	)
 
-    SEARCH_IGBLAST (
-		BUILD_IGBLAST_DATABASE.out,
+	BUNDLE_DATABASES (
 		PULL_MAMU_DATABASE.out,
+		BUILD_IGBLAST_DATABASE.out
+	)
+
+    SEARCH_IGBLAST (
+		BUNDLE_DATABASES.out,
         ASSEMBLE_WITH_CANU.out
     )
 	
@@ -311,7 +320,7 @@ process ASSEMBLE_WITH_CANU {
 
 }
 
-process PULL_IGMT_REFS {
+process PULL_IMGT_REFS {
 
 	/* */
 
@@ -333,15 +342,19 @@ process PULL_MAMU_DATABASE {
 
 	/* */
 
+	input:
+	path blast_files
+
 	output:
 	path "*"
 
 	script:
 	"""
-	wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/database/rhesus_monkey_VJ.tar && \
+	goDownloadFiles -http ${blast_files} && \
 	mkdir database && \
-	tar -xvf rhesus_monkey_VJ.tar -C database
-	wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/old_optional_file/rhesus_monkey_gl.aux
+	tar -xvf rhesus_monkey_VJ.tar -C database && \
+	mkdir -p internal_data/rhesus_monkey && \
+	mv rhesus_monkey_* internal_data/rhesus_monkey/
 	"""
 
 }
@@ -354,13 +367,31 @@ process BUILD_IGBLAST_DATABASE {
 	path fastas
 
 	output:
-	path "imgt_db"
+	path "imgt_db*"
 
 	script:
 	"""
 	cat *.fasta > merged.fasta && \
 	edit_imgt_file.pl merged.fasta > imgt_db && \
 	makeblastdb -parse_seqids -hash_index -dbtype nucl -in imgt_db
+	"""
+
+}
+
+process BUNDLE_DATABASES {
+
+	/* */
+
+	input:
+	path imgt_refs
+	path mamu_db
+
+	output:
+	path "databases.tar"
+
+	script:
+	"""
+	tar -cvf databases.tar imgt_db* rhesus_monkey_gl.aux database/ internal_data/
 	"""
 
 }
@@ -376,8 +407,7 @@ process SEARCH_IGBLAST {
 	// maxRetries 2
 	
 	input:
-	path imgt_db
-	path mamu_database
+	each path(databases)
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
@@ -385,7 +415,12 @@ process SEARCH_IGBLAST {
 	
 	script:
 	"""
+	tar -xvf databases.tar
 	igblastn \
+	-germline_db_V database/rhesus_monkey_V \
+	-germline_db_J database/rhesus_monkey_J \
+	-germline_db_D internal_data/rhesus_monkey/rhesus_monkey_D
+	-auxiliary_data rhesus_monkey_gl.aux \
 	-organism rhesus_monkey \
 	-query ${fasta} \
 	-db imgt_db
