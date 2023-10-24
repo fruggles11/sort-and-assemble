@@ -70,28 +70,28 @@ workflow {
 			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     )
 
-	PULL_IMGT_REFS (
-		ch_file_list
-	)
+	// PULL_IMGT_REFS (
+	// 	ch_file_list
+	// )
 
-	PULL_MAMU_DATABASE (
-		ch_blast_files
-	)
+	// PULL_MAMU_DATABASE (
+	// 	ch_blast_files
+	// )
 
-	BUILD_IGBLAST_DATABASE (
-		PULL_IMGT_REFS.out
-			.collect()
-	)
+	// BUILD_IGBLAST_DATABASE (
+	// 	PULL_IMGT_REFS.out
+	// 		.collect()
+	// )
 
-	BUNDLE_DATABASES (
-		PULL_MAMU_DATABASE.out,
-		BUILD_IGBLAST_DATABASE.out
-	)
+	// BUNDLE_DATABASES (
+	// 	PULL_MAMU_DATABASE.out,
+	// 	BUILD_IGBLAST_DATABASE.out
+	// )
 
-    SEARCH_IGBLAST (
-		BUNDLE_DATABASES.out,
-        ASSEMBLE_WITH_CANU.out
-    )
+    // SEARCH_IGBLAST (
+	// 	BUNDLE_DATABASES.out,
+    //     ASSEMBLE_WITH_CANU.out
+    // )
 	
 	
 }
@@ -354,7 +354,7 @@ process PULL_MAMU_DATABASE {
 	mkdir database && \
 	tar -xvf rhesus_monkey_VJ.tar -C database && \
 	mkdir -p internal_data/rhesus_monkey && \
-	mv rhesus_monkey_* internal_data/rhesus_monkey/
+	cp rhesus_monkey_* internal_data/rhesus_monkey/
 	"""
 
 }
@@ -391,7 +391,7 @@ process BUNDLE_DATABASES {
 
 	script:
 	"""
-	tar -cvf databases.tar imgt_db* rhesus_monkey_gl.aux database/ internal_data/
+	tar -cvf databases.tar imgt_db* rhesus_monkey_* database/ internal_data/
 	"""
 
 }
@@ -417,10 +417,6 @@ process SEARCH_IGBLAST {
 	"""
 	tar -xvf databases.tar
 	igblastn \
-	-germline_db_V database/rhesus_monkey_V \
-	-germline_db_J database/rhesus_monkey_J \
-	-germline_db_D internal_data/rhesus_monkey/rhesus_monkey_D
-	-auxiliary_data rhesus_monkey_gl.aux \
 	-organism rhesus_monkey \
 	-query ${fasta} \
 	-db imgt_db
