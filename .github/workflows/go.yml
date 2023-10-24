@@ -6,12 +6,12 @@ name: Go
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'src/goDownloadFiles.go'
+    # paths:
+    #   - 'src/goDownloadFiles.go'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'src/goDownloadFiles.go'
+    # paths:
+    #   - 'src/goDownloadFiles.go'
 
 jobs:
 
