@@ -14,13 +14,14 @@ ENV TZ America/New_York
 ENV DEBIAN_FRONTEND=non-interactive
 
 # Run package updates and install packages
-# Use `dpkg -l > apt-get.lock` inside a container to print
-COPY resources/config/apt-get.lock /tmp/package_list.txt
+# Use `dpkg -l > apt-get.lock` inside a container to print package versions
+COPY resources/config/apt-get.lock /apt-get-tmp/package_list.txt
 RUN apt-get update && \
-    awk '/^ii/ { printf("apt-get install -y %s=%s\n", $2, $3) }' /tmp/package_list.txt > /tmp/install_packages.sh && \
-    chmod +x /tmp/install_packages.sh && \
-    /tmp/install_packages.sh && \
-    rm -rf /tmp && \
+    awk '/^ii/ { printf("apt-get install -y %s=%s\n", $2, $3) }' /apt-get-tmp/package_list.txt \
+    > /apt-get-tmp/install_packages.sh && \
+    chmod +x /apt-get-tmp/install_packages.sh && \
+    /apt-get-tmp/install_packages.sh && \
+    rm -rf /apt-get-tmp && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -29,7 +30,7 @@ COPY src/ /src/
 RUN cd /src && \
     go build goDownloadFiles.go && \
     chmod +x goDownloadFiles
-ENV PATH="${PATH}:${pwd}/goDownloadFiles"
+ENV PATH="${PATH}:/src"
 
 # Install BBTools
 RUN wget https://sourceforge.net/projects/bbmap/files/BBMap_38.90.tar.gz \
