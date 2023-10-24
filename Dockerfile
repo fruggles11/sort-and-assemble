@@ -14,18 +14,15 @@ ENV TZ America/New_York
 ENV DEBIAN_FRONTEND=non-interactive
 
 # Run package updates and install packages
-RUN apt-get update \
-    && apt-get install -y \
-    wget \
-    default-jdk \
-    unzip \
-    zstd \
-    build-essential \
-    zlib1g-dev \
-    libidn11 \
-    git \
-    curl \
-    golang-go
+# Use `dpkg -l > apt-get.lock` inside a container to print
+COPY resources/config/apt-get.lock /tmp/package_list.txt
+RUN apt-get update && \
+    awk '/^ii/ { printf("apt-get install -y %s=%s\n", $2, $3) }' /tmp/package_list.txt > /tmp/install_packages.sh && \
+    chmod +x /tmp/install_packages.sh && \
+    /tmp/install_packages.sh && \
+    rm -rf /tmp && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # build go package for downloading files
 COPY src/ /src/
