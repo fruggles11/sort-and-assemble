@@ -71,10 +71,15 @@ workflow {
 		ch_file_list
 	)
 
-    // SEARCH_IGBLAST (
-	// 	PULL_IGMT_REFS.out,
-    //     ASSEMBLE_WITH_CANU.out
-    // )
+	BUILD_IGBLAST_DATABASE (
+		PULL_IGMT_REFS.out
+			.collect()
+	)
+
+    SEARCH_IGBLAST (
+		BUILD_IGBLAST_DATABASE.out,
+        ASSEMBLE_WITH_CANU.out
+    )
 	
 	
 }
@@ -215,7 +220,7 @@ process QC_TRIMMING {
 	out=${sample_id}_${primer_id}_filtered.fastq.gz \
 	ref=`realpath ${adapters}` \
 	forcetrimleft=30 forcetrimright2=30 \
-	mincalledquality=9 qin=33 minlength=200 \
+	mincalledquality=9 qin=33 minlength=600 \
 	uniquenames=t t=${task.cpus}
 	"""
 
@@ -285,6 +290,7 @@ process ASSEMBLE_WITH_CANU {
 	// maxRetries 2
 
 	cpus 4
+	memory '16 GB'
 	
 	input:
 	tuple path(qc_reads), val(sample_id), val(primer_id)
@@ -294,7 +300,7 @@ process ASSEMBLE_WITH_CANU {
 	
 	script:
 	"""
-	canu -p ${sample_id}-${primer_id} -d ${sample_id}-${primer_id} 'genomesize=1000' 'maxinputcoverage=5000' 'minreadlength=600' -nanopore `realpath ${qc_reads}`
+	canu -p ${sample_id}-${primer_id} -d ${sample_id}-${primer_id} 'genomesize=1000' 'maxinputcoverage=1000' 'minreadlength=600' 'correctedErrorRate=0.2' -nanopore `realpath ${qc_reads}`
 	"""
 
 }
@@ -307,12 +313,33 @@ process PULL_IGMT_REFS {
 	path url_list
 
 	output:
-	path "*.fasta"
+	path "I*.fasta"
 
 	script:
 	"""
-	goDownloadFiles -http ${url_list}
+	goDownloadFiles \
+	-http ${url_list}
 	"""
+
+}
+
+process BUILD_IGBLAST_DATABASE {
+
+	/* */
+
+	input:
+	path fastas
+
+	output:
+	path "imgt_db"
+
+	script:
+	"""
+	cat *.fasta > merged.fasta && \
+	edit_imgt_file.pl merged.fasta > imgt_db && \
+	makeblastdb -parse_seqids -hash_index -dbtype nucl -in imgt_db
+	"""
+
 }
 
 process SEARCH_IGBLAST {
@@ -326,6 +353,7 @@ process SEARCH_IGBLAST {
 	maxRetries 2
 	
 	input:
+	each path(imgt_db)
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:

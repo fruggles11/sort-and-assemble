@@ -63,13 +63,14 @@ RUN curl -L https://github.com/marbl/canu/releases/download/v2.2/canu-2.2.tar.xz
 ENV PATH=$PATH:/opt/canu-2.2/build/bin
 
 # Install igBLAST
-RUN wget ftp://ftp.ncbi.nih.gov/blast/executables/igblast/release/1.9.0/ncbi-igblast-1.9.0-x64-linux.tar.gz \
-    && tar -xvzf ncbi-igblast-1.9.0-x64-linux.tar.gz \
-    && mv ncbi-igblast-1.9.0 /opt/ \
-    && rm ncbi-igblast-1.9.0-x64-linux.tar.gz
+RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-igblast-1.22.0-x64-linux.tar.gz \
+    && tar -xvzf ncbi-igblast-1.22.0-x64-linux.tar.gz \
+    && mv ncbi-igblast-1.22.0 /opt/ \
+    && rm ncbi-igblast-1.22.0-x64-linux.tar.gz \
+    && chmod +x /opt/ncbi-igblast-1.22.0/bin/*
 
 # Update PATH for igBLAST
-ENV PATH="/opt/ncbi-igblast-1.9.0/bin:${PATH}"
+ENV PATH="/opt/ncbi-igblast-1.22.0/bin:${PATH}"
 
 # Default command to execute when starting a container from this image
 CMD [ "bash" ]
