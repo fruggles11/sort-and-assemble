@@ -20,6 +20,9 @@ workflow {
         .groupTuple ( by: 0 )
 		.map { chain, primers, diff -> tuple( chain, primers ) }
 	
+	ch_file_list = Channel
+		.fromPath( params.url_list )
+	
 	// Workflow steps 
     MERGE_BY_BARCODE (
         ch_fastq_dirs
@@ -64,7 +67,9 @@ workflow {
 			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     )
 
-	PULL_IGMT_REFS ()
+	PULL_IGMT_REFS (
+		ch_file_list
+	)
 
     // SEARCH_IGBLAST (
 	// 	PULL_IGMT_REFS.out,
@@ -298,12 +303,15 @@ process PULL_IGMT_REFS {
 
 	/* */
 
+	input:
+	path url_list
+
 	output:
 	path "*.fasta"
 
 	script:
 	"""
-	goDownloadFiles ${params.url_list}
+	goDownloadFiles -http ${url_list}
 	"""
 }
 
@@ -321,7 +329,7 @@ process SEARCH_IGBLAST {
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
-	
+	path "*"
 	
 	script:
 	"""
