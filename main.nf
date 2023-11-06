@@ -63,7 +63,7 @@ workflow {
         READ_STATS.out
     )
 
-    ASSEMBLE_WITH_CANU (
+    ASSEMBLE_WITH_FLYE (
         QC_TRIMMING.out
 			.map { fastq, sample, primer -> tuple( file(fastq), file(fastq).countFastq(), sample, primer ) }
 			.filter { it[1] > 1000 }
@@ -90,7 +90,7 @@ workflow {
 
     // SEARCH_IGBLAST (
 	// 	BUNDLE_DATABASES.out,
-    //     ASSEMBLE_WITH_CANU.out
+    //     ASSEMBLE_WITH_FLYE.out
     // )
 	
 	
@@ -291,7 +291,7 @@ process VISUALIZE_STATS {
 
 }
 
-process ASSEMBLE_WITH_CANU {
+process ASSEMBLE_WITH_FLYE {
 	
 	/* */
 	
@@ -308,14 +308,14 @@ process ASSEMBLE_WITH_CANU {
 	tuple path(qc_reads), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("${sample_id}-${primer_id}.contigs.fasta"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}-${primer_id}/*.fasta"), val(sample_id), val(primer_id)
 	
 	script:
 	"""
-	canu \
-	-p ${sample_id}-${primer_id} -d . \
-	genomeSize=1000 maxInputCoverage=1000 \
-	-trimmed -corrected -nanopore `realpath ${qc_reads}`
+	flye --nano-raw ${qc_reads} \
+	--genome-size 1000 \
+	--threads ${task.cpus} \
+	--out-dir ${sample_id}-${primer_id}
 	"""
 
 }

@@ -22,6 +22,7 @@ RUN apt-get update && \
     chmod +x /apt-get-tmp/install_packages.sh && \
     /apt-get-tmp/install_packages.sh && \
     rm -rf /apt-get-tmp && \
+    apt-get install -y python3-pip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -61,6 +62,12 @@ RUN curl -L https://github.com/marbl/canu/releases/download/v2.2/canu-2.2.tar.xz
     cd canu-2.2/src && \
     make -j 8
 ENV PATH=$PATH:/opt/canu-2.2/build/bin
+
+# Install Flye
+RUN git clone https://github.com/fenderglass/Flye && \
+    cd Flye && \
+    pip install setuptools && \
+    python3 setup.py install
 
 # Install igBLAST
 RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-igblast-1.22.0-x64-linux.tar.gz \
