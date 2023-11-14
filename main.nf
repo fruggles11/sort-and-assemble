@@ -69,9 +69,6 @@ workflow {
 
     CONVERT_TO_FASTA (
         QC_VALIDATION.out
-			.map { fastq, sample, primer -> tuple( file(fastq), file(fastq).countFastq(), sample, primer ) }
-			.filter { it[1] > 1000 }
-			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     )
 
 	CLUSTER_BY_IDENTITY (
