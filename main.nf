@@ -75,6 +75,10 @@ workflow {
 		CONVERT_TO_FASTA.out
 	)
 
+	// DEDUP_CONTIGS (
+	// 	CLUSTER_BY_IDENTITY.out.contigs
+	// )
+
 	// PULL_IMGT_REFS (
 	// 	ch_file_list
 	// )
@@ -371,7 +375,8 @@ process CLUSTER_BY_IDENTITY {
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("*"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_${primer_id}-consensus.fasta"), val(sample_id), val(primer_id), emit: contigs
+	path "cluster_fastqs/", emit: reads
 
 	script:
 	"""
@@ -379,7 +384,13 @@ process CLUSTER_BY_IDENTITY {
 	--id ${params.id_threshold} \
 	--clusters ${sample_id}_${primer_id}-cluster-seqs \
 	--consout ${sample_id}_${primer_id}-consensus.fasta \
-	--threads ${task.cpus}
+	--threads ${task.cpus} && \
+	mkdir -p cluster_fastqs && \
+	for file in ${sample_id}_${primer_id}-cluster-seqs*; do
+		if [ -f "$file" ]; then
+			mv "$file" "cluster_fastqs/${file}.fastq"
+		fi
+	done
 	"""
 
 }
@@ -412,6 +423,8 @@ process ASSEMBLE_WITH_FLYE {
 	"""
 
 }
+
+// process DEDUP_CONTIGS {}
 
 process PULL_IMGT_REFS {
 
