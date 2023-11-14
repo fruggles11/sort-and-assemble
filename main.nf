@@ -336,6 +336,11 @@ process VISUALIZE_STATS {
 process CONVERT_TO_FASTA {
 
 	/* */
+	
+	tag "${sample_id}, ${primer_id}"
+
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
 
 	input:
 	tuple path(reads), val(sample_id), val(primer_id)
