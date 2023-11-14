@@ -375,7 +375,7 @@ process CLUSTER_BY_IDENTITY {
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("${sample_id}_${primer_id}-consensus.fasta"), val(sample_id), val(primer_id), emit: contigs
+	tuple path("${sample_id}_${primer_id}-*.fasta"), val(sample_id), val(primer_id), emit: contigs
 	path "cluster_fastqs/", emit: reads
 
 	script:
@@ -384,6 +384,8 @@ process CLUSTER_BY_IDENTITY {
 	--id ${params.id_threshold} \
 	--clusters ${sample_id}_${primer_id}-cluster-seqs \
 	--consout ${sample_id}_${primer_id}-consensus.fasta \
+	--centroids ${sample_id}_${primer_id}-centroids.fasta \
+	--sizeout \
 	--threads ${task.cpus} && \
 	mkdir -p cluster_fastqs && \
 	for file in ${sample_id}_${primer_id}-cluster-seqs*; do
