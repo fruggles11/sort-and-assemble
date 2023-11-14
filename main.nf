@@ -387,8 +387,8 @@ process CLUSTER_BY_IDENTITY {
 	--threads ${task.cpus} && \
 	mkdir -p cluster_fastqs && \
 	for file in ${sample_id}_${primer_id}-cluster-seqs*; do
-		if [ -f "$file" ]; then
-			mv "$file" "cluster_fastqs/${file}.fastq"
+		if [ -f "\$file" ]; then
+			mv "\$file" "cluster_fastqs/\${file}.fastq"
 		fi
 	done
 	"""
