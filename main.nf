@@ -357,8 +357,8 @@ process CLUSTER_BY_IDENTITY {
 
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"git 
-	publishDir params.clustering_results, mode: 'copy', overwrite: true
+	tag "${sample_id}, ${primer_id}"
+	publishDir "${params.clustering_results}/${sample_id}_${primer_id}", mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
