@@ -90,7 +90,7 @@ RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-
 ENV PATH="/opt/ncbi-igblast-1.22.0/bin:${PATH}"
 
 # Install dedup_and_recal.py
-RUN pip install black poetry && \
+RUN pip install icecream poetry && \
     mkdir /dedup_and_recal && \
     git clone https://github.com/nrminor/dedup_and_recal.git /dedup_and_recal && \
     cd /dedup_and_recal && \
