@@ -10,7 +10,7 @@ In short, the pipeline does the following:
 4. Uses `bbduk` to trim to a minimum read length, minimum quality, and to remove adapter and primer sequences.
 5. Uses `seqkit stats` and `seqkit amplicon` to output statistics for each sample's reads and amplicons.
 6. Uses `csvtk` to visualize some of those statistics.
-7. Runs `canu` on the FASTQ for each primer of interest to provide a FASTA of IgM heavy and light haplotype consensus sequences.
+7. Runs `vsearch --cluster_fast` on the reads for each primer of interest to provide a FASTA of IgM heavy and light haplotype consensus sequences.
 8. Searches IgBLAST for each of those consensus sequences to find the closest matches.
 
 An example command after cloning this repo would be:

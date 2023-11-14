@@ -23,6 +23,7 @@ RUN apt-get update && \
     /apt-get-tmp/install_packages.sh && \
     rm -rf /apt-get-tmp && \
     apt-get install -y python3-pip && \
+    apt-get install -y autoconf && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -62,6 +63,15 @@ RUN curl -L https://github.com/marbl/canu/releases/download/v2.2/canu-2.2.tar.xz
     cd canu-2.2/src && \
     make -j 8
 ENV PATH=$PATH:/opt/canu-2.2/build/bin
+
+# Install VSEARCH
+RUN wget https://github.com/torognes/vsearch/archive/v2.25.0.tar.gz && \
+    tar xzf v2.25.0.tar.gz && \
+    cd vsearch-2.25.0 && \
+    ./autogen.sh && \
+    ./configure CFLAGS="-O3" CXXFLAGS="-O3" && \
+    make -j 8 && \
+    make install
 
 # Install Flye
 RUN git clone https://github.com/fenderglass/Flye && \

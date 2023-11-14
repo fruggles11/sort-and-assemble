@@ -45,7 +45,7 @@ workflow {
         ch_primers
     )
 
-    QC_TRIMMING (
+    TRIM_ADAPTERS (
         SPLIT_BY_PRIMER.out
 			.combine( FIND_ADAPTER_SEQS.out, by: 1 )
 			.map { id, reads, adapters -> tuple( id, file(reads), file(reads).countFastq(), file(adapters) ) }
@@ -53,8 +53,12 @@ workflow {
 			.map { id, reads, count, adapters -> tuple( id, file(reads), file(adapters) ) }
     )
 
+	QC_VALIDATION (
+		TRIM_ADAPTERS.out
+	)
+
     READ_STATS (
-        QC_TRIMMING.out
+        QC_VALIDATION.out
 			.map { tsv, sample, primer -> tsv }
 			.collect()
     )
@@ -63,12 +67,16 @@ workflow {
         READ_STATS.out
     )
 
-    ASSEMBLE_WITH_FLYE (
-        QC_TRIMMING.out
+    CONVERT_TO_FASTA (
+        QC_VALIDATION.out
 			.map { fastq, sample, primer -> tuple( file(fastq), file(fastq).countFastq(), sample, primer ) }
 			.filter { it[1] > 1000 }
 			.map { fastq, count, sample, primer -> tuple( file(fastq), sample, primer ) }
     )
+
+	CLUSTER_BY_IDENTITY (
+		CONVERT_TO_FASTA.out
+	)
 
 	// PULL_IMGT_REFS (
 	// 	ch_file_list
@@ -90,7 +98,7 @@ workflow {
 
     // SEARCH_IGBLAST (
 	// 	BUNDLE_DATABASES.out,
-    //     ASSEMBLE_WITH_FLYE.out
+    //     CLUSTER_BY_IDENTITY.out
     // )
 	
 	
@@ -114,6 +122,7 @@ params.read_qc = params.results + "/3_read_QC"
 params.trimmed_reads = params.read_qc + "/trimmed_reads"
 params.read_stats = params.read_qc + "/read_stats"
 params.assembly_results  = params.results + "/4_assembly_results"
+params.clustering_results  = params.results + "/4_clustering_results"
 params.ig_blast = params.assembly_results + "/IgBLAST"
 
 // --------------------------------------------------------------- //
@@ -129,7 +138,7 @@ process MERGE_BY_BARCODE {
 	/* */
 	
 	tag "${barcode}"
-	publishDir params.merged_reads, mode: 'copy'
+	publishDir params.merged_reads, mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -178,7 +187,7 @@ process SPLIT_BY_PRIMER {
 	/* */
 	
 	tag "${sample_id}"
-	publishDir params.split_reads, mode: 'copy'
+	publishDir params.split_reads, mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -201,18 +210,24 @@ process SPLIT_BY_PRIMER {
 		.replace(",", "\n")
 	"""
 	echo "${seq_patterns}" > primers.txt
-    seqkit grep -j ${task.cpus} -f primers.txt -m ${params.primer_mismatch} \
-	${merged_reads} -o ${sample_id}_${primer_id}.fastq.gz
+    seqkit grep \
+	--ignore-case \
+	--by-seq \
+	--delete-matched \
+	-f primers.txt \
+	-m ${params.primer_mismatch} \
+	-j ${task.cpus} \
+	${merged_reads} \
+	-o ${sample_id}_${primer_id}.fastq.gz
 	"""
 
 }
 
-process QC_TRIMMING {
+process TRIM_ADAPTERS {
 	
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir params.trimmed_reads, mode: 'copy'
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -223,17 +238,48 @@ process QC_TRIMMING {
 	tuple val(sample_id), path(split_reads), path(adapters)
 	
 	output:
-	tuple path("${sample_id}_${primer_id}_filtered.fastq.gz"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_${primer_id}_trimmed.fastq.gz"), val(sample_id), val(primer_id)
 	
 	script:
 	primer_id = split_reads.getSimpleName().split("_")[1]
 	"""
 	reformat.sh in=`realpath ${split_reads}` \
-	out=${sample_id}_${primer_id}_filtered.fastq.gz \
+	out=${sample_id}_${primer_id}_trimmed.fastq.gz \
 	ref=`realpath ${adapters}` \
-	forcetrimleft=30 forcetrimright2=30 \
-	mincalledquality=9 qin=33 minlength=600 \
-	uniquenames=t overwrite=true t=${task.cpus}
+	mincalledquality=9 qin=33 \
+	minlength=${params.min_len} maxlength=${params.max_len} \
+	uniquenames=t overwrite=true tossbrokenreads t=${task.cpus}
+	"""
+
+}
+
+process QC_VALIDATION {
+	
+	/* */
+	
+	tag "${sample_id}, ${primer_id}"
+	publishDir params.trimmed_reads, mode: 'copy', overwrite: true
+
+	errorStrategy 'ignore'
+
+	cpus 4
+	
+	input:
+	tuple path(split_reads), val(sample_id), val(primer_id)
+	
+	output:
+	tuple path("${sample_id}_${primer_id}_filtered.fastq.gz"), val(sample_id), val(primer_id)
+	
+	script:
+	"""
+	seqkit seq \
+	--min-len ${params.min_len} \
+	--max-len ${params.max_len} \
+	--validate-seq \
+	--threads ${task.cpus} \
+	--min-qual 9.0 \
+	${split_reads} \
+	-o ${sample_id}_${primer_id}_filtered.fastq.gz
 	"""
 
 }
@@ -242,7 +288,7 @@ process READ_STATS {
 	
 	/* */
 	
-	publishDir params.read_stats, mode: 'copy'
+	publishDir params.read_stats, mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -251,7 +297,6 @@ process READ_STATS {
 	
 	input:
 	path fastqs 
-	
 	
 	output:
     path "sequencing_run_stats.tsv"
@@ -268,7 +313,7 @@ process VISUALIZE_STATS {
 	
 	/* */
 
-	publishDir params.read_stats, mode: 'copy'
+	publishDir params.read_stats, mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -291,12 +336,59 @@ process VISUALIZE_STATS {
 
 }
 
+process CONVERT_TO_FASTA {
+
+	/* */
+
+	input:
+	tuple path(reads), val(sample_id), val(primer_id)
+
+	output:
+	tuple path("${sample_id}_${primer_id}.fasta"), val(sample_id), val(primer_id)
+
+	script:
+	"""
+	seqkit fq2fa ${reads} -o ${sample_id}_${primer_id}.fasta
+	"""
+
+}
+
+process CLUSTER_BY_IDENTITY {
+
+	/* */
+	
+	tag "${sample_id}, ${primer_id}"git 
+	publishDir params.clustering_results, mode: 'copy', overwrite: true
+
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+
+	cpus 4
+	
+	input:
+	tuple path(fasta), val(sample_id), val(primer_id)
+	
+	output:
+	tuple path("*"), val(sample_id), val(primer_id)
+
+	script:
+	"""
+	vsearch --cluster_fast ${fasta} \
+	--id ${params.id_threshold} \
+	--clusters ${sample_id}_${primer_id}-cluster-seqs \
+	--msaout ${sample_id}_${primer_id}-msa.fasta \
+	--consout ${sample_id}_${primer_id}-consensus.fasta \
+	--threads ${task.cpus}
+	"""
+
+}
+
 process ASSEMBLE_WITH_FLYE {
 	
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir params.assembly_results, mode: 'copy'
+	publishDir params.assembly_results, mode: 'copy', overwrite: true
 
 	errorStrategy 'ignore' // { task.attempt < 3 ? 'retry' : errorMode }
 	// maxRetries 2
@@ -401,7 +493,7 @@ process SEARCH_IGBLAST {
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir params.ig_blast, mode: 'copy'
+	publishDir params.ig_blast, mode: 'copy', overwrite: true
 
 	errorStrategy 'ignore' // { task.attempt < 3 ? 'retry' : errorMode }
 	// maxRetries 2
