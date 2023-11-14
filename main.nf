@@ -378,7 +378,6 @@ process CLUSTER_BY_IDENTITY {
 	vsearch --cluster_fast ${fasta} \
 	--id ${params.id_threshold} \
 	--clusters ${sample_id}_${primer_id}-cluster-seqs \
-	--msaout ${sample_id}_${primer_id}-msa.fasta \
 	--consout ${sample_id}_${primer_id}-consensus.fasta \
 	--threads ${task.cpus}
 	"""
