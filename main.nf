@@ -430,7 +430,7 @@ process DEDUP_CONTIGS {
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir params.assembly_results, mode: 'copy', overwrite: true
+	publishDir "${params.clustering_results}/${sample_id}_${primer_id}", mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
