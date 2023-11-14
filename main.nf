@@ -384,13 +384,12 @@ process CLUSTER_BY_IDENTITY {
 	--id ${params.id_threshold} \
 	--clusters ${sample_id}_${primer_id}-cluster-seqs \
 	--consout ${sample_id}_${primer_id}-consensus.fasta \
-	--centroids ${sample_id}_${primer_id}-centroids.fasta \
 	--sizeout \
 	--threads ${task.cpus} && \
 	mkdir -p cluster_fastqs && \
 	for file in ${sample_id}_${primer_id}-cluster-seqs*; do
 		if [ -f "\$file" ]; then
-			mv "\$file" "cluster_fastqs/\${file}.fastq"
+			mv "\$file" "cluster_fastqs/\${file}.fasta"
 		fi
 	done
 	"""
