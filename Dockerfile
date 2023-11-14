@@ -16,14 +16,20 @@ ENV DEBIAN_FRONTEND=non-interactive
 # Run package updates and install packages
 # Use `dpkg -l > apt-get.lock` inside a container to print package versions
 COPY resources/config/apt-get.lock /apt-get-tmp/package_list.txt
-RUN apt-get update && \
+RUN apt update && \
+    apt install software-properties-common -y && \
+    apt update && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt update && \
+    apt-get update && \
+    apt-get install -y python3.11 && \
+    apt-get install -y python3-pip && \
+    apt-get install -y autoconf && \
     awk '/^ii/ { printf("apt-get install -y %s=%s\n", $2, $3) }' /apt-get-tmp/package_list.txt \
     > /apt-get-tmp/install_packages.sh && \
     chmod +x /apt-get-tmp/install_packages.sh && \
     /apt-get-tmp/install_packages.sh && \
     rm -rf /apt-get-tmp && \
-    apt-get install -y python3-pip && \
-    apt-get install -y autoconf && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -73,12 +79,6 @@ RUN wget https://github.com/torognes/vsearch/archive/v2.25.0.tar.gz && \
     make -j 8 && \
     make install
 
-# Install Flye
-RUN git clone https://github.com/fenderglass/Flye && \
-    cd Flye && \
-    pip install setuptools && \
-    python3 setup.py install
-
 # Install igBLAST
 RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-igblast-1.22.0-x64-linux.tar.gz \
     && tar -xvzf ncbi-igblast-1.22.0-x64-linux.tar.gz \
@@ -88,6 +88,15 @@ RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-
 
 # Update PATH for igBLAST
 ENV PATH="/opt/ncbi-igblast-1.22.0/bin:${PATH}"
+
+# Install dedup_and_recal.py
+RUN pip install black poetry && \
+    mkdir /dedup_and_recal && \
+    git clone https://github.com/nrminor/dedup_and_recal.git /dedup_and_recal && \
+    cd /dedup_and_recal && \
+    poetry install && \
+    chmod +x dedup_and_recal.py
+ENV PATH="$PATH:/dedup_and_recal"
 
 # Default command to execute when starting a container from this image
 CMD [ "bash" ]

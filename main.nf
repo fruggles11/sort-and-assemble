@@ -75,9 +75,9 @@ workflow {
 		CONVERT_TO_FASTA.out
 	)
 
-	// DEDUP_CONTIGS (
-	// 	CLUSTER_BY_IDENTITY.out.contigs
-	// )
+	DEDUP_CONTIGS (
+		CLUSTER_BY_IDENTITY.out.contigs
+	)
 
 	// PULL_IMGT_REFS (
 	// 	ch_file_list
@@ -425,7 +425,30 @@ process ASSEMBLE_WITH_FLYE {
 
 }
 
-// process DEDUP_CONTIGS {}
+process DEDUP_CONTIGS {
+
+	/* */
+	
+	tag "${sample_id}, ${primer_id}"
+	publishDir params.assembly_results, mode: 'copy', overwrite: true
+
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+
+	input:
+	tuple path(fasta), val(sample_id), val(primer_id)
+
+	output:
+	tuple path("${sample_id}_${primer_id}_deduped.fasta"), val(sample_id), val(primer_id)
+
+	script:
+	"""
+	dedup_and_recal.py \
+	--fasta ${fasta} \
+	--output ${sample_id}_${primer_id}_deduped \
+	--split_char "="
+	"""
+}
 
 process PULL_IMGT_REFS {
 
