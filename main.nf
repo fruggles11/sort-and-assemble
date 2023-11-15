@@ -396,35 +396,6 @@ process CLUSTER_BY_IDENTITY {
 
 }
 
-process ASSEMBLE_WITH_FLYE {
-	
-	/* */
-	
-	tag "${sample_id}, ${primer_id}"
-	publishDir params.assembly_results, mode: 'copy', overwrite: true
-
-	errorStrategy 'ignore' // { task.attempt < 3 ? 'retry' : errorMode }
-	// maxRetries 2
-
-	cpus 4
-	memory '16 GB'
-	
-	input:
-	tuple path(qc_reads), val(sample_id), val(primer_id)
-	
-	output:
-	tuple path("${sample_id}-${primer_id}/*.fasta"), val(sample_id), val(primer_id)
-	
-	script:
-	"""
-	flye --nano-raw ${qc_reads} \
-	--genome-size 1000 \
-	--threads ${task.cpus} \
-	--out-dir ${sample_id}-${primer_id}
-	"""
-
-}
-
 process DEDUP_CONTIGS {
 
 	/* */
@@ -446,7 +417,8 @@ process DEDUP_CONTIGS {
 	dedup_and_recal.py \
 	--fasta ${fasta} \
 	--output ${sample_id}_${primer_id}_deduped \
-	--split_char "="
+	--split_char "=" \
+	--min_depth 2
 	"""
 }
 
