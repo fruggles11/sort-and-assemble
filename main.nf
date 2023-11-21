@@ -451,8 +451,8 @@ process CORRECT_DEPTH_ANNOTATION {
 	output:
 	tuple path("${sample_id}_${primer_id}_contigs.fasta"), val(sample_id), val(primer_id)
 	
-	script:
-	"""
+	shell:
+	'''
 	awk '
 		/^>/ {
 			match($0, /reads=[0-9]+/)
@@ -462,8 +462,8 @@ process CORRECT_DEPTH_ANNOTATION {
 			next
 		}
 		{ print }
-	' ${contigs} > ${sample_id}_${primer_id}_contigs.fasta
-	"""
+	' !{contigs} > !{sample_id}_!{primer_id}_contigs.fasta
+	'''
 
 }
 
