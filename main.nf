@@ -416,7 +416,7 @@ process ASSEMBLE_WITH_CANU {
 	tuple path(qc_reads), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("*.fasta"), val(sample_id), val(primer_id), env(count)
+	tuple path("${sample_id}-${primer_id}.contigs.fasta"), val(sample_id), val(primer_id), env(count)
 	
 	script:
 	"""
