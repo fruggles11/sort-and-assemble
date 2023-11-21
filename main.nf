@@ -401,7 +401,7 @@ process ASSEMBLE_WITH_CANU {
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir "${params.assembly_results}/${sample_id}_${primer_id}", mode: 'copy'
+	publishDir "${params.assembly_results}/${sample_id}_${primer_id}", mode: 'copy', overwrite: true
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
 	cpus 4
@@ -419,6 +419,7 @@ process ASSEMBLE_WITH_CANU {
 	'genomesize=1000' \
 	'minreadlength=600' \
 	-trimmed \
+	-corrected \
 	-nanopore `realpath ${qc_reads}`
 	"""
 
