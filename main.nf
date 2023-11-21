@@ -75,9 +75,14 @@ workflow {
 		CONVERT_TO_FASTA.out
 	)
 
-	// DEDUP_CONTIGS (
-	// 	ASSEMBLE_WITH_CANU.out.contigs
-	// )
+	CORRECT_DEPTH_ANNOTATION (
+		ASSEMBLE_WITH_CANU.out.contigs
+			.filter { it[3] > 0 }
+	)
+
+	DEDUP_CONTIGS (
+		CORRECT_DEPTH_ANNOTATION.out
+	)
 
 	// PULL_IMGT_REFS (
 	// 	ch_file_list
@@ -401,16 +406,17 @@ process ASSEMBLE_WITH_CANU {
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir "${params.assembly_results}/${sample_id}_${primer_id}", mode: 'copy', overwrite: true
+	
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
+
 	cpus 4
 	
 	input:
 	tuple path(qc_reads), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("*.fasta"), val(sample_id), val(primer_id)
+	tuple path("*.fasta"), val(sample_id), val(primer_id), env(count)
 	
 	script:
 	"""
@@ -419,7 +425,33 @@ process ASSEMBLE_WITH_CANU {
 	'genomesize=1000' \
 	'minreadlength=600' \
 	-trimmed \
-	-nanopore `realpath ${qc_reads}`
+	-nanopore `realpath ${qc_reads}` && \
+	count=\$(grep -c "^>" ${sample_id}-${primer_id}.contigs.fasta)
+	"""
+
+}
+
+process CORRECT_DEPTH_ANNOTATION {
+
+	/* */
+	
+	tag "${sample_id}, ${primer_id}"
+	
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+
+	cpus 1
+	
+	input:
+	tuple path(contigs), val(sample_id), val(primer_id), val(count)
+
+	output:
+	tuple path("${sample_id}_${primer_id}_contigs.fasta"), val(sample_id), val(primer_id)
+	
+	script:
+	"""
+	sed -E 's/(^>.* )(reads=[0-9]+)( .*)/\1\3 \2/' \
+	${contigs} > ${sample_id}_${primer_id}_contigs.fasta
 	"""
 
 }
