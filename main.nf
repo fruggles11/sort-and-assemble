@@ -71,13 +71,13 @@ workflow {
         QC_VALIDATION.out
     )
 
-	CLUSTER_BY_IDENTITY (
+	ASSEMBLE_WITH_CANU (
 		CONVERT_TO_FASTA.out
 	)
 
-	DEDUP_CONTIGS (
-		CLUSTER_BY_IDENTITY.out.contigs
-	)
+	// DEDUP_CONTIGS (
+	// 	ASSEMBLE_WITH_CANU.out.contigs
+	// )
 
 	// PULL_IMGT_REFS (
 	// 	ch_file_list
@@ -384,7 +384,7 @@ process CLUSTER_BY_IDENTITY {
 	--id ${params.id_threshold} \
 	--clusters ${sample_id}_${primer_id}-cluster-seqs \
 	--consout ${sample_id}_${primer_id}-consensus.fasta \
-	--sizeout \
+	--iddef 3 \
 	--threads ${task.cpus} && \
 	mkdir -p cluster_fastqs && \
 	for file in ${sample_id}_${primer_id}-cluster-seqs*; do
@@ -392,6 +392,35 @@ process CLUSTER_BY_IDENTITY {
 			mv "\$file" "cluster_fastqs/\${file}.fasta"
 		fi
 	done
+	"""
+
+}
+
+process ASSEMBLE_WITH_CANU {
+	
+	/* */
+	
+	tag "${sample_id}, ${primer_id}"
+	publishDir params.assembly_results, mode: 'copy'
+	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
+	maxRetries 2
+	cpus 4
+	
+	input:
+	tuple path(qc_reads), val(sample_id), val(primer_id)
+	
+	output:
+	tuple path("*.fasta"), val(sample_id), val(primer_id)
+	
+	script:
+	"""
+	canu \
+	-p "${sample_id}-${primer_id}" -d . \
+	'genomesize=1000' \
+	'maxinputcoverage=1000' \
+	'minreadlength=600' \
+	-trimmed \
+	-nanopore `realpath ${qc_reads}`
 	"""
 
 }
