@@ -453,7 +453,16 @@ process CORRECT_DEPTH_ANNOTATION {
 	
 	script:
 	"""
-	sed -E 's/(^>.* )(reads=[0-9]+)( .*)/\1\3 \2/' ${contigs} > ${sample_id}_${primer_id}_contigs.fasta
+	awk '
+		/^>/ {
+			match($0, /reads=[0-9]+/)
+			reads = substr($0, RSTART, RLENGTH)
+			sub(/reads=[0-9]+/, "")
+			print $0 " " reads
+			next
+		}
+		{ print }
+	' ${contigs} > ${sample_id}_${primer_id}_contigs.fasta
 	"""
 
 }
