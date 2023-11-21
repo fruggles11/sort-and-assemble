@@ -453,8 +453,7 @@ process CORRECT_DEPTH_ANNOTATION {
 	
 	script:
 	"""
-	sed -E 's/(^>.* )(reads=[0-9]+)( .*)/\1\3 \2/' \
-	${contigs} > ${sample_id}_${primer_id}_contigs.fasta
+	sed -E 's/(^>.* )(reads=[0-9]+)( .*)/\1\3 \2/' ${contigs} > ${sample_id}_${primer_id}_contigs.fasta
 	"""
 
 }
