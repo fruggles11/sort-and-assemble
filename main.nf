@@ -76,7 +76,7 @@ workflow {
 	)
 
 	CORRECT_DEPTH_ANNOTATION (
-		ASSEMBLE_WITH_CANU.out.contigs
+		ASSEMBLE_WITH_CANU.out
 			.filter { it[3] > 0 }
 	)
 
