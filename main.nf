@@ -419,7 +419,6 @@ process ASSEMBLE_WITH_CANU {
 	'genomesize=1000' \
 	'minreadlength=600' \
 	-trimmed \
-	-corrected \
 	-nanopore `realpath ${qc_reads}`
 	"""
 
