@@ -424,6 +424,7 @@ process ASSEMBLE_WITH_CANU {
 	-p "${sample_id}-${primer_id}" -d . \
 	'genomesize=1000' \
 	'minreadlength=600' \
+	'maxinputcoverage=5000' \
 	-trimmed \
 	-nanopore `realpath ${qc_reads}` && \
 	count=\$(grep -c "^>" ${sample_id}-${primer_id}.contigs.fasta)
