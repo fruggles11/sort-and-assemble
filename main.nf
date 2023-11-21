@@ -417,7 +417,6 @@ process ASSEMBLE_WITH_CANU {
 	canu \
 	-p "${sample_id}-${primer_id}" -d . \
 	'genomesize=1000' \
-	'maxinputcoverage=1000' \
 	'minreadlength=600' \
 	-trimmed \
 	-nanopore `realpath ${qc_reads}`
