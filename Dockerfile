@@ -100,5 +100,12 @@ RUN pip install icecream poetry matplotlib biopython && \
     chmod +x dedup_and_recal.py
 ENV PATH="$PATH:/dedup_and_recal"
 
+# Install amplicon_sorter
+RUN cd /opt && \
+    git clone https://github.com/avierstr/amplicon_sorter.git && \
+    cd amplicon_sorter && \
+    chmod +x amplicon_sorter.py
+ENV PATH="$PATH:/opt/amplicon_sorter"
+
 # Default command to execute when starting a container from this image
 CMD [ "bash" ]
