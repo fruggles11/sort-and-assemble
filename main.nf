@@ -321,7 +321,7 @@ process SORT_BY_AMPLICON {
 
 	script:
 	"""
-	amplicon_sorter \
+	amplicon_sorter.py \
 	-i ${fasta} \
 	–o . \
 	-min ${params.min_len} -max ${params.max_len} \

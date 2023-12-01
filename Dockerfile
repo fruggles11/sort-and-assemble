@@ -92,7 +92,7 @@ RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-
 ENV PATH="/opt/ncbi-igblast-1.22.0/bin:${PATH}"
 
 # Install dedup_and_recal.py and other python stuff
-RUN pip install icecream poetry && \
+RUN pip install icecream poetry biopython matplotlib edlib && \
     cd /opt && \
     git clone https://github.com/nrminor/dedup_and_recal.git && \
     cd dedup_and_recal && \
@@ -101,8 +101,7 @@ RUN pip install icecream poetry && \
 ENV PATH="$PATH:/opt/dedup_and_recal"
 
 # Install amplicon_sorter
-RUN cd /opt && \
-    git clone https://github.com/nrminor/amplicon_sorter.git && \
+RUN cd /opt && git clone https://github.com/nrminor/amplicon_sorter.git && \
     cd amplicon_sorter && \
     git checkout dev && \
     poetry install && \
