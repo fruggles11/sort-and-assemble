@@ -25,6 +25,7 @@ RUN apt update && \
     apt-get install -y python3.11 && \
     apt-get install -y python3-pip && \
     apt-get install -y autoconf && \
+    apt-get install -y clang && \
     awk '/^ii/ { printf("apt-get install -y %s=%s\n", $2, $3) }' /apt-get-tmp/package_list.txt \
     > /apt-get-tmp/install_packages.sh && \
     chmod +x /apt-get-tmp/install_packages.sh && \
@@ -89,8 +90,9 @@ RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-
 # Update PATH for igBLAST
 ENV PATH="/opt/ncbi-igblast-1.22.0/bin:${PATH}"
 
-# Install dedup_and_recal.py
-RUN pip install icecream poetry && \
+# Install dedup_and_recal.py and other python stuff
+RUN pip install icecream poetry matplotlib biopython && \
+    python3 -m pip install edlib && \
     mkdir /dedup_and_recal && \
     git clone https://github.com/nrminor/dedup_and_recal.git /dedup_and_recal && \
     cd /dedup_and_recal && \
