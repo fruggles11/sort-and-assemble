@@ -103,8 +103,8 @@ ENV PATH="$PATH:/opt/dedup_and_recal"
 # Install amplicon_sorter
 RUN cd /opt && \
     git clone https://github.com/nrminor/amplicon_sorter.git && \
-    git checkout dev && \
     cd amplicon_sorter && \
+    git checkout dev && \
     poetry install && \
     chmod +x amplicon_sorter.py
 ENV PATH="$PATH:/opt/amplicon_sorter"
