@@ -11,14 +11,6 @@ workflow {
 	// input channels
     ch_fastq_dirs = Channel
         .fromPath( "${params.fastq_dir}/barcode*/", type: 'dir' )
-
-    ch_primers = Channel
-        .fromPath ( params.primer_table )
-        .splitCsv ( header: true )
-        .map { row -> tuple( row.chain, row.primer_seq, row.differentiating ) }
-        .filter { it[2] == "true" }
-        .groupTuple ( by: 0 )
-		.map { chain, primers, diff -> tuple( chain, primers ) }
 	
 	ch_file_list = Channel
 		.fromPath( params.url_list )
@@ -37,18 +29,8 @@ workflow {
 			.filter { it[1] > params.min_reads }
     )
 
-    SPLIT_BY_PRIMER (
-        MERGE_BY_BARCODE.out
-			.map { fastq -> tuple( file(fastq), file(fastq).countFastq() ) }
-			.filter { it[1] > params.min_reads }
-			.map { fastq, count -> fastq },
-        ch_primers
-    )
-
     TRIM_ADAPTERS (
-        SPLIT_BY_PRIMER.out
-			.combine( FIND_ADAPTER_SEQS.out, by: 1 )
-			.map { id, reads, adapters -> tuple( id, file(reads), file(reads).countFastq(), file(adapters) ) }
+        FIND_ADAPTER_SEQS.out
 			.filter { it[2] > params.min_reads }
 			.map { id, reads, count, adapters -> tuple( id, file(reads), file(adapters) ) }
     )
@@ -67,26 +49,18 @@ workflow {
         READ_STATS.out
     )
 
-    // CONVERT_TO_FASTA (
-    //     QC_VALIDATION.out
-    // )
-
-	// ASSEMBLE_WITH_CANU (
-	// 	CONVERT_TO_FASTA.out
-	// )
-
 	SORT_BY_AMPLICON (
 		QC_VALIDATION.out
 	)
 
-	CORRECT_DEPTH_ANNOTATION (
-		ASSEMBLE_WITH_CANU.out
-			.filter { it[3] > 0 }
-	)
+	// CORRECT_DEPTH_ANNOTATION (
+	// 	ASSEMBLE_WITH_CANU.out
+	// 		.filter { it[3] > 0 }
+	// )
 
-	DEDUP_CONTIGS (
-		CORRECT_DEPTH_ANNOTATION.out
-	)
+	// DEDUP_CONTIGS (
+	// 	CORRECT_DEPTH_ANNOTATION.out
+	// )
 
 	// PULL_IMGT_REFS (
 	// 	ch_file_list
@@ -182,7 +156,7 @@ process FIND_ADAPTER_SEQS {
 	tuple path(merged_reads), val(count)
 	
 	output:
-	tuple path("${sample_id}_adapters.fasta"), val(sample_id)
+	tuple val(sample_id), path(merged_reads), val(count), path("${sample_id}_adapters.fasta")
 	
 	script:
 	sample_id = merged_reads.getSimpleName()
@@ -192,52 +166,11 @@ process FIND_ADAPTER_SEQS {
 
 }
 
-process SPLIT_BY_PRIMER {
-	
-	/* */
-	
-	tag "${sample_id}"
-	publishDir params.split_reads, mode: 'copy', overwrite: true
-
-	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
-	maxRetries 2
-	
-	input:
-	each path(merged_reads)
-    tuple val(primer_id), val(primer_seqs)
-
-	output:
-	tuple path("${sample_id}_${primer_id}.fastq.gz"), val(sample_id)
-	
-	script:
-	sample_id = merged_reads.getSimpleName()
-	seq_patterns = primer_seqs
-		.toString()
-		.replace("[", "")
-		.replace("]", "")
-		.replace("'", "")
-		.replace(" ", "")
-		.replace(",", "\n")
-	"""
-	echo "${seq_patterns}" > primers.txt
-    seqkit grep \
-	--ignore-case \
-	--by-seq \
-	--delete-matched \
-	-f primers.txt \
-	-m ${params.primer_mismatch} \
-	-j ${task.cpus} \
-	${merged_reads} \
-	-o ${sample_id}_${primer_id}.fastq.gz
-	"""
-
-}
-
 process TRIM_ADAPTERS {
 	
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"
+	tag "${sample_id}"
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -248,13 +181,13 @@ process TRIM_ADAPTERS {
 	tuple val(sample_id), path(split_reads), path(adapters)
 	
 	output:
-	tuple path("${sample_id}_${primer_id}_trimmed.fastq.gz"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_trimmed.fastq.gz"), val(sample_id)
 	
 	script:
 	primer_id = split_reads.getSimpleName().split("_")[1]
 	"""
 	reformat.sh in=`realpath ${split_reads}` \
-	out=${sample_id}_${primer_id}_trimmed.fastq.gz \
+	out=${sample_id}_trimmed.fastq.gz \
 	ref=`realpath ${adapters}` \
 	mincalledquality=9 qin=33 \
 	minlength=${params.min_len} maxlength=${params.max_len} \
@@ -267,7 +200,7 @@ process QC_VALIDATION {
 	
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"
+	tag "${sample_id}"
 	publishDir params.trimmed_reads, mode: 'copy', overwrite: true
 
 	errorStrategy 'ignore'
@@ -275,10 +208,10 @@ process QC_VALIDATION {
 	cpus 4
 	
 	input:
-	tuple path(split_reads), val(sample_id), val(primer_id)
+	tuple path(split_reads), val(sample_id)
 	
 	output:
-	tuple path("${sample_id}_${primer_id}_filtered.fastq.gz"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_filtered.fastq.gz"), val(sample_id)
 	
 	script:
 	"""
@@ -289,7 +222,7 @@ process QC_VALIDATION {
 	--threads ${task.cpus} \
 	--min-qual 9.0 \
 	${split_reads} \
-	-o ${sample_id}_${primer_id}_filtered.fastq.gz
+	-o ${sample_id}_filtered.fastq.gz
 	"""
 
 }
@@ -350,30 +283,30 @@ process CONVERT_TO_FASTA {
 
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"
+	tag "${sample_id}"
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
 
 	input:
-	tuple path(reads), val(sample_id), val(primer_id)
+	tuple path(reads), val(sample_id)
 
 	output:
-	tuple path("${sample_id}_${primer_id}.fasta"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}.fasta"), val(sample_id)
 
 	script:
 	"""
-	seqkit fq2fa ${reads} -o ${sample_id}_${primer_id}.fasta
+	seqkit fq2fa ${reads} -o ${sample_id}.fasta
 	"""
 
 }
 
-process CLUSTER_BY_IDENTITY {
+process SORT_BY_AMPLICON {
 
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"
-	publishDir "${params.clustering_results}/${sample_id}_${primer_id}", mode: 'copy', overwrite: true
+	tag "${sample_id}"
+	publishDir "${params.clustering_results}/${sample_id}", mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -381,57 +314,18 @@ process CLUSTER_BY_IDENTITY {
 	cpus 4
 	
 	input:
-	tuple path(fasta), val(sample_id), val(primer_id)
+	tuple path(fasta), val(sample_id)
 	
 	output:
-	tuple path("${sample_id}_${primer_id}-*.fasta"), val(sample_id), val(primer_id), emit: contigs
-	path "cluster_fastqs/", emit: reads
+	tuple path("${sample_id}*.fasta"), val(sample_id)
 
 	script:
 	"""
-	vsearch --cluster_fast ${fasta} \
-	--id ${params.id_threshold} \
-	--clusters ${sample_id}_${primer_id}-cluster-seqs \
-	--consout ${sample_id}_${primer_id}-consensus.fasta \
-	--iddef 3 \
-	--threads ${task.cpus} && \
-	mkdir -p cluster_fastqs && \
-	for file in ${sample_id}_${primer_id}-cluster-seqs*; do
-		if [ -f "\$file" ]; then
-			mv "\$file" "cluster_fastqs/\${file}.fasta"
-		fi
-	done
-	"""
-
-}
-
-process ASSEMBLE_WITH_CANU {
-	
-	/* */
-	
-	tag "${sample_id}, ${primer_id}"
-	
-	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
-	maxRetries 2
-
-	cpus 4
-	
-	input:
-	tuple path(qc_reads), val(sample_id), val(primer_id)
-	
-	output:
-	tuple path("${sample_id}-${primer_id}.contigs.fasta"), val(sample_id), val(primer_id), env(count)
-	
-	script:
-	"""
-	canu \
-	-p "${sample_id}-${primer_id}" -d . \
-	'genomesize=1000' \
-	'minreadlength=600' \
-	'maxinputcoverage=5000' \
-	-trimmed \
-	-nanopore `realpath ${qc_reads}` && \
-	count=\$(grep -c "^>" ${sample_id}-${primer_id}.contigs.fasta)
+	amplicon_sorter \
+	-i ${fasta} \
+	–o . \
+	-min ${params.min_len} -max ${params.max_len} \
+	-ho -ar -maxr 100000 -np ${task.cpus}
 	"""
 
 }
@@ -440,7 +334,7 @@ process CORRECT_DEPTH_ANNOTATION {
 
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"
+	tag "${sample_id}"
 	
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -448,10 +342,10 @@ process CORRECT_DEPTH_ANNOTATION {
 	cpus 1
 	
 	input:
-	tuple path(contigs), val(sample_id), val(primer_id), val(count)
+	tuple path(contigs), val(sample_id), val(count)
 
 	output:
-	tuple path("${sample_id}_${primer_id}_contigs.fasta"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_contigs.fasta"), val(sample_id)
 	
 	shell:
 	'''
@@ -464,7 +358,7 @@ process CORRECT_DEPTH_ANNOTATION {
 			next
 		}
 		{ print }
-	' !{contigs} > !{sample_id}_!{primer_id}_contigs.fasta
+	' !{contigs} > !{sample_id}_contigs.fasta
 	'''
 
 }
@@ -473,23 +367,23 @@ process DEDUP_CONTIGS {
 
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"
-	publishDir "${params.assembly_results}/${sample_id}_${primer_id}", mode: 'copy', overwrite: true
+	tag "${sample_id}"
+	publishDir "${params.assembly_results}/${sample_id}", mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
 
 	input:
-	tuple path(fasta), val(sample_id), val(primer_id)
+	tuple path(fasta), val(sample_id)
 
 	output:
-	tuple path("${sample_id}_${primer_id}_deduped.fasta"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_deduped.fasta"), val(sample_id)
 
 	script:
 	"""
 	dedup_and_recal.py \
 	--fasta ${fasta} \
-	--output ${sample_id}_${primer_id}_deduped \
+	--output ${sample_id}_deduped \
 	--split_char "=" \
 	--min_depth 2
 	"""
@@ -575,7 +469,7 @@ process SEARCH_IGBLAST {
 	
 	/* */
 	
-	tag "${sample_id}, ${primer_id}"
+	tag "${sample_id}"
 	publishDir params.ig_blast, mode: 'copy', overwrite: true
 
 	errorStrategy 'ignore' // { task.attempt < 3 ? 'retry' : errorMode }
@@ -583,7 +477,7 @@ process SEARCH_IGBLAST {
 	
 	input:
 	each path(databases)
-	tuple path(fasta), val(sample_id), val(primer_id)
+	tuple path(fasta), val(sample_id)
 	
 	output:
 	path "*"

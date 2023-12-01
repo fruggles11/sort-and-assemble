@@ -105,7 +105,7 @@ RUN cd /opt && \
     git clone https://github.com/nrminor/amplicon_sorter.git && \
     git checkout dev && \
     cd amplicon_sorter && \
-    poetry install \
+    poetry install && \
     chmod +x amplicon_sorter.py
 ENV PATH="$PATH:/opt/amplicon_sorter"
 
