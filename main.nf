@@ -67,12 +67,16 @@ workflow {
         READ_STATS.out
     )
 
-    CONVERT_TO_FASTA (
-        QC_VALIDATION.out
-    )
+    // CONVERT_TO_FASTA (
+    //     QC_VALIDATION.out
+    // )
 
-	ASSEMBLE_WITH_CANU (
-		CONVERT_TO_FASTA.out
+	// ASSEMBLE_WITH_CANU (
+	// 	CONVERT_TO_FASTA.out
+	// )
+
+	SORT_BY_AMPLICON (
+		QC_VALIDATION.out
 	)
 
 	CORRECT_DEPTH_ANNOTATION (

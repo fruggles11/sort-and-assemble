@@ -23,6 +23,7 @@ RUN apt update && \
     apt update && \
     apt-get update && \
     apt-get install -y python3.11 && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
     apt-get install -y python3-pip && \
     apt-get install -y autoconf && \
     apt-get install -y clang && \
@@ -91,19 +92,20 @@ RUN wget https://ftp.ncbi.nih.gov/blast/executables/igblast/release/LATEST/ncbi-
 ENV PATH="/opt/ncbi-igblast-1.22.0/bin:${PATH}"
 
 # Install dedup_and_recal.py and other python stuff
-RUN pip install icecream poetry matplotlib biopython && \
-    python3 -m pip install edlib && \
-    mkdir /dedup_and_recal && \
-    git clone https://github.com/nrminor/dedup_and_recal.git /dedup_and_recal && \
-    cd /dedup_and_recal && \
+RUN pip install icecream poetry && \
+    cd /opt && \
+    git clone https://github.com/nrminor/dedup_and_recal.git && \
+    cd dedup_and_recal && \
     poetry install && \
     chmod +x dedup_and_recal.py
-ENV PATH="$PATH:/dedup_and_recal"
+ENV PATH="$PATH:/opt/dedup_and_recal"
 
 # Install amplicon_sorter
 RUN cd /opt && \
-    git clone https://github.com/avierstr/amplicon_sorter.git && \
+    git clone https://github.com/nrminor/amplicon_sorter.git && \
+    git checkout dev && \
     cd amplicon_sorter && \
+    poetry install \
     chmod +x amplicon_sorter.py
 ENV PATH="$PATH:/opt/amplicon_sorter"
 
