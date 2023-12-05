@@ -389,7 +389,7 @@ process SORT_BY_AMPLICON {
 	-i ${fasta} \
 	-o . \
 	-min ${params.min_len} -max ${params.max_len} \
-	-ho -ar -maxr 100000 -np ${task.cpus}
+	-ar -maxr 100000 -np ${task.cpus}
 	"""
 
 }
