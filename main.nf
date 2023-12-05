@@ -72,7 +72,7 @@ workflow {
     )
 
 	SORT_BY_AMPLICON (
-		QC_VALIDATION.out
+		CONVERT_TO_FASTA.out
 	)
 
 	// CORRECT_DEPTH_ANNOTATION (
@@ -129,6 +129,7 @@ params.trimmed_reads = params.read_qc + "/trimmed_reads"
 params.read_stats = params.read_qc + "/read_stats"
 params.assembly_results  = params.results + "/4_assembly_results"
 params.clustering_results  = params.results + "/4_clustering_results"
+params.sorted_amplicons  = params.results + "/4_sorted_amplicons"
 params.ig_blast = params.assembly_results + "/IgBLAST"
 
 // --------------------------------------------------------------- //
@@ -369,7 +370,7 @@ process SORT_BY_AMPLICON {
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir "${params.clustering_results}/${sample_id}", mode: 'copy', overwrite: true
+	publishDir "${params.sorted_amplicons}", mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
@@ -380,13 +381,13 @@ process SORT_BY_AMPLICON {
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("${sample_id}*.fasta"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}-${primer_id}"), val(sample_id), val(primer_id)
 
 	script:
 	"""
 	amplicon_sorter.py \
 	-i ${fasta} \
-	-o . \
+	-o ${sample_id}-${primer_id} \
 	-min ${params.min_len} -max ${params.max_len} \
 	-ho -ar -maxr 100000 -np ${task.cpus}
 	"""

@@ -101,7 +101,8 @@ RUN pip install icecream poetry biopython matplotlib edlib && \
 ENV PATH="$PATH:/opt/dedup_and_recal"
 
 # Install amplicon_sorter
-RUN cd /opt && git clone https://github.com/nrminor/amplicon_sorter.git && \
+RUN cd /opt && \
+    git clone https://github.com/nrminor/amplicon_sorter.git && \
     cd amplicon_sorter && \
     git checkout dev && \
     poetry install && \
