@@ -84,23 +84,23 @@ workflow {
 	// 	CORRECT_DEPTH_ANNOTATION.out
 	// )
 
-	PULL_IMGT_REFS (
-		ch_file_list
-	)
+	// PULL_IMGT_REFS (
+	// 	ch_file_list
+	// )
 
-	PULL_MAMU_DATABASE (
-		ch_blast_files
-	)
+	// PULL_MAMU_DATABASE (
+	// 	ch_blast_files
+	// )
 
-	BUILD_IGBLAST_DATABASE (
-		PULL_IMGT_REFS.out
-			.collect()
-	)
+	// BUILD_IGBLAST_DATABASE (
+	// 	PULL_IMGT_REFS.out
+	// 		.collect()
+	// )
 
-	BUNDLE_DATABASES (
-		PULL_MAMU_DATABASE.out,
-		BUILD_IGBLAST_DATABASE.out
-	)
+	// BUNDLE_DATABASES (
+	// 	PULL_MAMU_DATABASE.out,
+	// 	BUILD_IGBLAST_DATABASE.out
+	// )
 
     // SEARCH_IGBLAST (
 	// 	BUNDLE_DATABASES.out,
@@ -360,7 +360,7 @@ process CONVERT_TO_FASTA {
 
 	script:
 	"""
-	seqkit fq2fa ${reads} -o ${sample_id}_${primer_id}.fasta
+	seqkit fq2fa `realpath ${reads}` > ${sample_id}_${primer_id}.fasta
 	"""
 
 }
