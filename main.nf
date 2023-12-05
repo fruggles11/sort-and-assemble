@@ -381,7 +381,7 @@ process SORT_BY_AMPLICON {
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("${sample_id}*.fasta"), path("${sample_id}-${primer_id}"), val(sample_id), val(primer_id)
+	tuple path("*.fasta"), path("${sample_id}-${primer_id}"), val(sample_id), val(primer_id)
 
 	script:
 	"""
