@@ -381,13 +381,13 @@ process SORT_BY_AMPLICON {
 	tuple path(fasta), val(sample_id), val(primer_id)
 	
 	output:
-	tuple path("*.fasta"), path("${sample_id}-${primer_id}"), val(sample_id), val(primer_id)
+	tuple path("${sample_id}_${primer_id}"), val(sample_id), val(primer_id)
 
 	script:
 	"""
 	amplicon_sorter.py \
 	-i ${fasta} \
-	-o ${sample_id}-${primer_id} \
+	-o . \
 	-min ${params.min_len} -max ${params.max_len} \
 	-ho -ar -maxr 100000 -np ${task.cpus}
 	"""
