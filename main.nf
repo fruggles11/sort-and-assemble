@@ -370,7 +370,7 @@ process SORT_BY_AMPLICON {
 	/* */
 	
 	tag "${sample_id}, ${primer_id}"
-	publishDir "${params.sorted_amplicons}/${sample_id}_${primer_id}", mode: 'copy', overwrite: true
+	publishDir "${params.sorted_amplicons}", mode: 'copy', overwrite: true
 
 	errorStrategy { task.attempt < 3 ? 'retry' : errorMode }
 	maxRetries 2
