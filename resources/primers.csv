@@ -4,4 +4,5 @@ heavy,GTTCRGGGAAGTAGTCCTTGAC,true,3�IgG(Inner2) 5�
 light,CTGCTCTGTGACACTCTCCTG,false,Rhesus kappa(Outer)Rev1
 light,TGCCATCTGCCTTCCAGGC,false,Rhesus lambda(Outer)Rev2
 light,GCAGGCACACAACAGAGACAG,true,Rhesus kappa(Inner)Rev1
-light,CAGACACACTAGTGTGGCCTTG,true,Rhesus lambda(Inner)Rev1:
+light,CAGACACACTAGTGTGGCCTTG,true,Rhesus lambda(Inner)Rev1
+heavy,GAGGCTCAGCGGGAAGACCTTG,true,3’Human_IgA(Inner) 5’
