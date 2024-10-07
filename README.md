@@ -58,7 +58,7 @@ To run the workflow, simply change into the workflow directory and run the follo
 
 ```
 nextflow run . \
---fastq_dir "~/Documents/fastq_pass"
+--fastq_dir "~/Documents/fastq_pass" \
 --primer_table "resources/primers.csv"
 ```
 
