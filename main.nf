@@ -34,13 +34,13 @@ workflow {
     FIND_ADAPTER_SEQS (
         MERGE_BY_BARCODE.out
 			.map { fastq -> tuple( file(fastq), file(fastq).countFastq() ) }
-			.filter { it[1] > params.min_reads }
+			.filter { it[1] >= params.min_reads }
     )
 
     SPLIT_BY_PRIMER (
         MERGE_BY_BARCODE.out
 			.map { fastq -> tuple( file(fastq), file(fastq).countFastq() ) }
-			.filter { it[1] > params.min_reads }
+			.filter { it[1] >= params.min_reads }
 			.map { fastq, count -> fastq },
         ch_primers
     )
@@ -49,7 +49,7 @@ workflow {
         SPLIT_BY_PRIMER.out
 			.combine( FIND_ADAPTER_SEQS.out, by: 1 )
 			.map { id, reads, adapters -> tuple( id, file(reads), file(reads).countFastq(), file(adapters) ) }
-			.filter { it[2] > params.min_reads }
+			.filter { it[2] >= params.min_reads }
 			.map { id, reads, count, adapters -> tuple( id, file(reads), file(adapters) ) }
     )
 
