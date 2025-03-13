@@ -11,7 +11,7 @@ In short, the pipeline does the following:
 4. Uses `bbduk` to trim to a minimum read length, minimum quality, and to remove adapter and primer sequences.
 5. Uses `seqkit stats` to output statistics for each sample's amplicons.
 6. Uses `csvtk` to visualize some of those statistics.
-7. Runs the `canu` asssembler on the reads for each primer of interest to provide a FASTA of antibody heavy and light haplotype consensus sequences.
+7. Runs the `amplicon_sorter` asssembler on the reads for each primer of interest to provide a FASTA of antibody heavy and light haplotype consensus sequences.
 8. Searches IgBLAST for each of those consensus sequences to find the closest matches. (*In development!*)
 
 ## Quick Start
