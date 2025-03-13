@@ -19,7 +19,7 @@ In short, the pipeline does the following:
 If you already have [Docker](https://www.docker.com/get-started/) and [NextFlow](https://www.nextflow.io/) installed on your system, simply run the following command in the directory of your choice:
 
 ```
-nextflow run nrminor/sort-and-assemble -latest --fastq_dir /path/to/fastq_files.fastq.gz
+nextflow run fruggles11/sort-and-assemble -latest --fastq_dir /path/to/fastq_files.fastq.gz
 ```
 
 This command automatically pulls the workflow from GitHub and runs it. If you do not have Docker and NextFlow installed, or want to tweak any of the default configurations in the workflow, proceed to the following sections.
